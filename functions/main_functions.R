@@ -176,7 +176,7 @@ MCS_f<-function(LOSS,B,alpha){
 # Output : object returned by rugarch::mcsTest containing the selected model set and test statistics
 ###############################################################################################
 
-
+set.seed(123)
 
 	k_len			<-	max(np::b.star(LOSS)[,2])  # automatic block length
 					# as in Patton, Politis and White (2009)
@@ -562,7 +562,7 @@ build_summary_from_list <- function(tabs_list,
 #          highlighting the best and second-best values in each column
 ###############################################################################################
 
-tab_7_dt_f <- function(x) {
+tab_7_dt_f <- function(x, title=NULL) {
  
   # Assign column names
   colnames(x) <- c(
@@ -573,7 +573,7 @@ tab_7_dt_f <- function(x) {
   # Compute best and second-best values by column
   max_vals <- apply(x, 2, max, na.rm = TRUE)
   
-  # secondo valore distinto più alto per colonna
+  # 
   second_vals <- apply(x, 2, function(x) {
     ux <- sort(unique(x), decreasing = TRUE)
     if (length(ux) >= 2) ux[2] else NA
@@ -583,6 +583,12 @@ tab_7_dt_f <- function(x) {
     x,
     rownames = TRUE,
     class = "compact",
+    caption = if (!is.null(title)) {
+      htmltools::tags$caption(
+        style = "caption-side: top; text-align: center; font-weight: bold; font-size: 16px;",
+        title
+      )
+    },
     options = list(
       dom = "t",
       ordering = FALSE,
@@ -606,17 +612,17 @@ tab_7_dt_f <- function(x) {
             var val = parseFloat(data[i + 1]);
             var cell = $('td:eq(' + (i + 1) + ')', row);
             
-            // best = verde scuro
+            // best 
             if (!isNaN(val) && val === max_vals[i]) {
               cell.css('background-color', '#39e639');
             }
             
-            // second-best = verde più chiaro
+            // second-best 
             else if (!isNaN(val) && val === second_vals[i]) {
               cell.css('background-color', '#d9f7d9');
             }
             
-            // bold per 9
+            // bold 
             if (!isNaN(val) && val === 9) {
               cell.css('font-weight', 'bold');
             }

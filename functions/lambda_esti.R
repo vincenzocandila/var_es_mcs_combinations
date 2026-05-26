@@ -10,24 +10,25 @@ lambda_esti <- function(rets, alfa, VaRm, ESm, FZmat) {
   # ESm: matrix of training ES forecasts - T x nmod (nmod is the size of the model universe)
   # FZmat: matrix of joint losses in the training period - T x nmod 
   #################################################################################################
-  
   # Initialization and settings
   N <- length(rets)
   OUT <- 1
-
   set.seed(123)  # Set random seed for replicability of results
-  ninit <- 1000  # Number of initial samples
-  nelect <- 5    # Set of best solutions
+
+  # alfa <- 1 - alfa  # Commented as it's not used directly
+  
+  ninit <- 100  # Number of initial samples
+  nelect <- 5     # Set of best solutions
   nrep <- 5      # Number of iterations in estimation loops
   
   # Compute AL Loss over a random set of initial values
   fstore <- matrix(0, ninit, 2)
   out <- 1
-
+  # fstore[,1] <- -0.5+runif(ninit)*(0.5+0.5)
   fstore[,1] <- runif(ninit) * (0.4)
   
   temp <- as.matrix(fstore[,1], ncol = 1)
-  
+  # Fixed: use sapply instead of apply
   fstore[,2] <- sapply(temp[,1], function(x) AL_lambda(x, rets, alfa, VaRm, ESm, FZmat, out))
   
   # Take best nelect solutions
@@ -50,7 +51,7 @@ lambda_esti <- function(rets, alfa, VaRm, ESm, FZmat) {
     ffstore[jj, 2] <- result$value
     
     # Iteration loop for quasi newton and simplex optimization
-    for (ii in 1:nrep) {  
+    for (ii in 1:nrep) {  # Changed from jj to ii to avoid confusion
       result <- optim(ffstore[jj, 1], fun, method = "BFGS")
       ffstore[jj, 1] <- result$par
       ffstore[jj, 2] <- result$value
@@ -68,8 +69,6 @@ lambda_esti <- function(rets, alfa, VaRm, ESm, FZmat) {
   }
   
   # Select best estimate and report output
-  index <- which(ffstore[,2]<1e+100)
-  ffstore <- ffstore[index,]
   ffstore <- ffstore[order(ffstore[, 2]), ]
   esti <- ffstore[1, 1]
   AL <- ffstore[1, 2]
