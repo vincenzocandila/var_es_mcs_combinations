@@ -363,7 +363,7 @@ Model Confidence Set</h2>
 </div>
 <div id="assembly-date-and-contact" class="section level2">
 <h2>📅 Assembly Date and Contact</h2>
-<p><strong>Package assembled:</strong> April 2026<br />
+<p><strong>Package assembled:</strong> 21 May 2026<br />
 <strong>Contact:</strong> Vincenzo Candila — <a href="mailto:vcandila@unisa.it" class="email">vcandila@unisa.it</a><br />
 <em>(Please reach out for any questions about the code or data)</em></p>
 <hr />
@@ -373,25 +373,32 @@ Model Confidence Set</h2>
 <pre><code>combining_var_es_mcs_combinations/
 ├── README.md
 ├── README.html
-├── replicate_tables_and_figures.R            # Replicates all tables and figures in the paper
-├── generate_proposed_combinations.R          # Generates the six proposed combined predictors
+├── 1_replicate_table_2.R                         # Replicates Table and 2
+├── 2_from_intermediary_files_to_final_files.R    # Computes the proposed forecast combinations and benchmarks
+├── 3_replicate_figure_2_and_tables_5_to_7.R      # Replicates Figure 2 and Table 5, 6, and 7
 ├── functions/
-│   ├── main_functions.R                      # Core functions used by both scripts
-│   ├── AL_lambda.R                           # Asymmetric Laplace loss (lambda variant)
-│   ├── AL_msc.R                              # Asymmetric Laplace loss (MSC variant)
-│   ├── beta_esti_ms.R                        # Beta coefficient estimation (minimum score)
-│   ├── lambda_esti.R                         # Lambda weight estimation
-│   ├── rel_comb.R                            # Relative combination utility
-│   └── transbeta.R                           # Beta transformation for quantile/ES weights
+    ├── main_functions.R                          # Core functions used by both scripts
+    ├── AL_lambda.R                               # Asymmetric Laplace loss (lambda variant)
+    ├── AL_msc.R                                  # Asymmetric Laplace loss (Minimum score variant)
+    ├── beta_esti_ms.R                            # Beta coefficient estimation (Minimum score)
+    ├── lambda_esti.R                             # Lambda weight estimation
+    ├── rel_comb.R                                # Relative combination utility
+    ├── msc_main.R                      # Implementation of the Minimum Score Combining (MSC) method of Taylor (2020)
+    ├── rsc_main.R                      # Implementation of the Relative Score Combining (MSC) method of Taylor (2020)
+    └── transbeta.R                               # Beta transformation for quantile/ES weights
 └── data/
-    ├── SP500_data.RData                      # S&amp;P 500 daily returns and realized volatility measures
-    ├── Shanghai_comp_data.RData              # Shanghai Composite returns and realized volatility measures
-    ├── Global_Policy_Uncertainty_Data.csv    # Global Economic Policy Uncertainty index (EPU)
-    ├── res_sp500_tau_0.025.RData             # Pre-computed model results for S&amp;P 500 (τ = 2.5%)
-    ├── res_shanghai_comp_tau_0.025.RData     # Pre-computed model results for Shanghai Comp. (τ = 2.5%)
-    ├── all_indices_tau_0.025.RData           # Result tables for all nine indices (τ = 2.5%)
-    ├── all_indices_tau_0.01.RData            # Result tables for all nine indices (τ = 1%)
-    └── shanghai_comp_tau_0.025_comb_example.RData  # Example dataset to be used with generate_proposed_combinations.R</code></pre>
+    ├── raw/
+        ├── sp500_data.RData                      # S&amp;P 500 daily returns and realized volatility measures
+        ├── shanghai_comp_data.RData              # Shanghai Composite returns and realized volatility measures
+        └── Global_Policy_Uncertainty_Data.csv    # Global Economic Policy Uncertainty index (EPU)
+    ├── intermediary/
+        ├── sp500_tau_0.025_files.RData           # S&amp;P 500 intermediary files needed to compute the proposed combinations
+        └── shanghai_comp_tau_0.025_files.RData   # Shanghai Comp. intermediary files needed to compute the proposed comb.
+    └── results/
+        ├── sp500_final_results_precomputed.RData             # Results for S&amp;P 500 (τ = 2.5%)
+        ├── shanghai_comp_final_results_precomputed.RData     # Results for Shanghai Comp. (τ = 2.5%)
+        ├── all_indices_tau_0.025.RData                       # Result tables for all nine indices (τ = 2.5%)
+        └── all_indices_tau_0.01.RData                        # Result tables for all nine indices (τ = 1%)</code></pre>
 <hr />
 </div>
 <div id="computing-environment" class="section level2">
@@ -405,8 +412,8 @@ platform-independent)</li>
 <h3>Required R packages</h3>
 <table>
 <colgroup>
-<col width="17%" />
-<col width="21%" />
+<col width="15%" />
+<col width="23%" />
 <col width="61%" />
 </colgroup>
 <thead>
@@ -419,72 +426,125 @@ platform-independent)</li>
 <tbody>
 <tr class="odd">
 <td><code>xts</code></td>
-<td>≥ 0.13</td>
+<td>0.14.1</td>
 <td>Time series management</td>
 </tr>
 <tr class="even">
 <td><code>zoo</code></td>
-<td>≥ 1.8</td>
+<td>1.8.13</td>
 <td>Time series infrastructure</td>
 </tr>
 <tr class="odd">
 <td><code>fBasics</code></td>
-<td>≥ 4032</td>
+<td>4041.97</td>
 <td>Summary statistics</td>
 </tr>
 <tr class="even">
 <td><code>rugarch</code></td>
-<td>≥ 1.5</td>
-<td>GARCH model estimation</td>
+<td>1.5.3</td>
+<td>Model Confidence Set (MCS) procedure via <code>mcsTest</code></td>
 </tr>
 <tr class="odd">
 <td><code>GAS</code></td>
-<td>≥ 0.3</td>
-<td>Generalized Autoregressive Score models</td>
+<td>0.3.4.1 (Currently, the GAS package has been removed from the CRAN.
+But previous versions are available at <a href="https://cran.r-project.org/src/contrib/Archive/GAS/" class="uri">https://cran.r-project.org/src/contrib/Archive/GAS/</a>)</td>
+<td>Functions for VaR backtesting (<code>BacktestVaR</code>) and
+Fissler-Ziegel loss evaluation (<code>FZLoss</code>)</td>
 </tr>
 <tr class="even">
 <td><code>np</code></td>
-<td>≥ 0.60</td>
-<td>Non-parametric kernel methods</td>
+<td>0.60.18</td>
+<td>Automatic block length selection via <code>b.star</code> for the
+bootstrap procedure within the MCS</td>
 </tr>
 <tr class="odd">
 <td><code>esback</code></td>
-<td>≥ 0.1</td>
+<td>0.3.1</td>
 <td>Expected Shortfall backtesting</td>
 </tr>
 <tr class="even">
 <td><code>Rsolnp</code></td>
-<td>≥ 1.16</td>
+<td>1.16</td>
 <td>Non-linear optimization (combinations only)</td>
 </tr>
 <tr class="odd">
 <td><code>DT</code></td>
-<td>≥ 0.30</td>
+<td>0.33</td>
 <td>Interactive HTML tables</td>
 </tr>
 <tr class="even">
 <td><code>htmltools</code></td>
-<td>≥ 0.5</td>
+<td>0.5.8.1</td>
 <td>HTML rendering utilities</td>
 </tr>
 </tbody>
 </table>
 <p>Install all packages at once with:</p>
-<pre class="r"><code>install.packages(c(&quot;xts&quot;, &quot;zoo&quot;, &quot;fBasics&quot;, &quot;rugarch&quot;, &quot;GAS&quot;,
-                   &quot;np&quot;, &quot;esback&quot;, &quot;Rsolnp&quot;, &quot;DT&quot;, &quot;htmltools&quot;))</code></pre>
+<pre class="r"><code>install.packages(c(&quot;xts&quot;, &quot;zoo&quot;, &quot;fBasics&quot;, &quot;rugarch&quot;,
+                   &quot;np&quot;, &quot;esback&quot;, &quot;Rsolnp&quot;, &quot;DT&quot;, &quot;htmltools&quot;))
+# GAS has been removed from CRAN and must be installed manually from the CRAN archive:
+install.packages(&quot;https://cran.r-project.org/src/contrib/Archive/GAS/GAS_0.3.4.1.tar.gz&quot;,
+                 repos = NULL,
+                 type = &quot;source&quot;)</code></pre>
 <p>No environment manager (e.g., <code>renv</code>) was used. To record
 a snapshot of your installed versions, run <code>sessionInfo()</code> in
 R after installing the packages.</p>
 <hr />
 </div>
 </div>
-<div id="data" class="section level2">
-<h2>🗃️ Data</h2>
+<div id="workflow" class="section level2">
+<h2>🔄 Workflow</h2>
+<p>The replication workflow is organized into three main stages:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Raw data</strong>
+<ul>
+<li>Raw financial and macroeconomic data are stored in
+<code>data/raw/</code>.</li>
+<li>These include daily returns, realized volatility measures, and the
+Global Economic Policy Uncertainty (EPU) index.</li>
+<li>Table 2 is replicated using the raw data and the script
+<code>1_replicate_table_2.R</code>.</li>
+</ul></li>
+<li><strong>Intermediary data</strong>
+<ul>
+<li>The raw data were originally used to generate intermediary
+<code>.RData</code> objects stored in
+<code>data/intermediary/</code>.</li>
+<li>These intermediary files contain the VaR and ES forecasts produced
+by the 32 competing models.</li>
+<li>Reproducing the intermediary files from the raw data requires the
+full re-estimation of all forecasting models and is computationally
+intensive (approximately one week on a dedicated workstation for each
+index).</li>
+<li>For this reason, the intermediary files are directly included in the
+replication package.</li>
+<li>This allows users to fully reproduce the forecast combinations,
+tables, figures, and empirical results reported in the paper without
+regenerating the intermediary objects from the raw data.</li>
+</ul></li>
+<li><strong>Results</strong>
+<ul>
+<li>Pre-computed results are stored in <code>data/results/</code>.</li>
+<li>The script <code>2_from_intermediary_files_to_final_files.R</code>
+(if executed) uses the intermediary datasets to compute the six proposed
+forecast combinations and the four benchmark methods. The resulting
+objects are stored in <code>data/results/</code> and allow the
+replication of Figure 2 and Tables 5 and 6 through the script
+<code>3_replicate_figure_2_and_tables_5_to_7.R</code>.</li>
+<li>Alternatively, the script
+<code>3_replicate_figure_2_and_tables_5_to_7.R</code> reproduces Figure
+2 and Tables 5–7 directly using the pre-computed files included in
+<code>data/results/</code>.</li>
+</ul></li>
+</ol>
+</div>
+<div id="raw-data" class="section level2">
+<h2>🗃️ Raw Data</h2>
 <div id="sp500-and-shanghai-composite-data" class="section level3">
 <h3>SP500 and Shanghai Composite data</h3>
 <ul>
-<li><strong>Files:</strong> <code>data/SP500_data.RData</code>,
-<code>data/Shanghai_comp_data.RData</code></li>
+<li><strong>Files:</strong> <code>data/raw/sp500_data.RData</code>,
+<code>data/raw/shanghai_comp_data.RData</code></li>
 <li><strong>Source:</strong> Oxford-Man Institute’s Realized
 Library</li>
 <li><strong>Period used:</strong> January 2013 – June 2022</li>
@@ -504,60 +564,112 @@ please consult the Oxford-Man Institute terms.</li>
 <h3>Global Economic Policy Uncertainty (EPU)</h3>
 <ul>
 <li><strong>File:</strong>
-<code>data/Global_Policy_Uncertainty_Data.csv</code></li>
+<code>data/raw/Global_Policy_Uncertainty_Data.csv</code></li>
 <li><strong>Source:</strong> <a href="https://www.policyuncertainty.com/global_monthly.html" class="uri">https://www.policyuncertainty.com/global_monthly.html</a><br />
 Column used: <code>GEPU_current</code>. Downloaded on <strong>May 26,
 2023</strong>.</li>
 <li><strong>Note:</strong> This series may be subject to revisions over
 time; the version included in the package reflects the data as of the
 download date.</li>
+<li><strong>License:</strong> Publicly available for academic use;
+please consult the original website for terms of use.</li>
 </ul>
 </div>
-<div id="estimation-results" class="section level3">
-<h3>Estimation results</h3>
-<table>
-<colgroup>
-<col width="31%" />
-<col width="68%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th>File</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>data/res_sp500_tau_0.025.RData</code></td>
-<td>VaR/ES results for S&amp;P 500 (τ = 2.5%)</td>
-</tr>
-<tr class="even">
-<td><code>data/res_shanghai_comp_tau_0.025.RData</code></td>
-<td>VaR/ES results for Shanghai Composite (τ = 2.5%)</td>
-</tr>
-<tr class="odd">
-<td><code>data/all_indices_tau_0.025.RData</code></td>
-<td>Result tables for all nine indices (τ = 2.5%)</td>
-</tr>
-<tr class="even">
-<td><code>data/all_indices_tau_0.01.RData</code></td>
-<td>Result tables for all nine indices (τ = 1%)</td>
-</tr>
-<tr class="odd">
-<td><code>data/shanghai_comp_tau_0.025_comb_example.RData</code></td>
-<td>Forecast arrays for the combination example</td>
-</tr>
-</tbody>
-</table>
-<hr />
 </div>
+<div id="intermediary-data" class="section level2">
+<h2>📦 Intermediary Data</h2>
+<ul>
+<li><strong>Files:</strong>
+<code>data/intermediary/sp500_tau_0.025_files.RData</code>,
+<code>data/intermediary/shanghai_comp_tau_0.025_files.RData</code></li>
+<li><strong>Variables included in each file:</strong>
+<ul>
+<li><code>Tin</code> : length of the training period</li>
+<li><code>nstep</code> : number of forecasting steps (model
+re-estimations) and out-of-sample period length</li>
+<li><code>N_model</code> : number of competing models (nmod)</li>
+<li><code>tau</code> : coverage level used<br />
+</li>
+<li><code>VaR_training_data_mod</code> : array of VaR forecasts over the
+training period - Tin x nmod x nstep</li>
+<li><code>ES_training_data_mod</code> : array of ES forecasts over the
+training period - Tin x nmod x nstep</li>
+<li><code>r_t_in_s_matrix</code> : matrix of returns over the training
+period - Tin x nstep</li>
+<li><code>VaR_oos</code> : matrix of out-of-sample VaR forecasts - nstep
+x nmod</li>
+<li><code>ES_oos</code> : matrix of out-of-sample ES forecasts - nstep x
+nmod</li>
+<li><code>r_t_oos_full</code> : matrix of out-of-sample returns (xts/zoo
+format) - nstep x 1</li>
+<li><code>r_t_oos</code> : matrix of out-of-sample returns - nstep x
+1</li>
+<li><code>list_of_models</code> : character vector of labels for the
+nmod competing models</li>
+</ul></li>
+</ul>
+</div>
+<div id="results-data" class="section level2">
+<h2>📊 Results Data</h2>
+<ul>
+<li><strong>Files:</strong>
+<code>data/results/sp500_final_results_precomputed.RData</code>,
+<code>data/results/shanghai_comp_final_results_precomputed.RData</code>,
+<code>data/results/all_indices_tau_0.025.RData</code>,
+<code>data/results/all_indices_tau_0.01.RData.RData</code>,</li>
+<li><strong>Variables included in</strong>
+<code>data/results/sp500_final_results_precomputed.RData</code> and
+<code>data/results/shanghai_comp_final_results_precomputed.RData</code>:</li>
+<li><code>r_t_oos_full_plot</code>: daily log-returns used for the
+training-period plots.</li>
+<li><code>r_t_oos_full</code>: daily log-returns for the out-of-sample
+period.</li>
+<li><code>nstep</code>: total number of model re-estimations,
+corresponding to the length of the out-of-sample period.</li>
+<li><code>lab_full</code>: model labels, including the 32 individual
+models, the four benchmarks (<code>EW-Comb</code>,
+<code>Median-Comb</code>, <code>RS-Comb</code>, <code>MS-Comb</code>),
+and the six proposed forecast combinations (<code>MCS-Comb</code>,
+<code>WL-MCS-Comb</code>, <code>MCS-RS-Comb</code>,
+<code>WL-MCS-RS-Comb</code>, <code>MCS-MS-Comb</code>,
+<code>WL-MCS-MS-Comb</code>).</li>
+<li><code>tau</code>: coverage level.</li>
+<li><code>Backtesting_pvalues</code>: p-values of the six backtests
+reported in Table 4 of the paper, by model and forecasting step.</li>
+<li><code>db_loss_oos</code>: matrix of Fissler-Ziegel losses for the
+out-of-sample period for the 42 models and forecast combinations.</li>
+<li><code>VaR_oos_ev</code> and <code>ES_oos_ev</code>: matrices of VaR
+and ES forecasts for the out-of-sample period for the 42 models and
+forecast combinations.</li>
+<li><code>MCS_est_included</code>: list of models included at each
+forecasting step in the Set of Superior Models (SSM) from the Model
+Confidence Set (MCS), using the unweighted Fissler-Ziegel loss.</li>
+<li><code>MCS_est_included_w</code>: list of models included at each
+forecasting step in the Set of Superior Models (SSM) from the Model
+Confidence Set (MCS), using the weighted Fissler-Ziegel loss.</li>
+<li><strong>Variables included in</strong>
+<code>data/results/all_indices_tau_0.025.RData</code> and
+<code>data/results/all_indices_tau_0.01.RData</code>:</li>
+<li><code>list_of_tabs</code>: list of tables (one for each index)
+containing models in rows and backtesting p-values (<code>UC</code>,
+<code>CC</code>, <code>DQ</code>, <code>BD-1</code>, <code>BD-2</code>,
+<code>BD-3</code>) together with the Fissler-Ziegel loss in columns.
+LaTeX markers (e.g., <code>\cellcolor{...}</code>) indicate whether
+models simultaneously pass all backtests at the 5% significance level
+and belong to the Set of Superior Models (SSM) from the Model Confidence
+Set (MCS) at the 25% significance level.</li>
+<li><code>lab_full</code>: model labels, including the 32 individual
+models, the four benchmarks (<code>EW-Comb</code>,
+<code>Median-Comb</code>, <code>RS-Comb</code>, <code>MS-Comb</code>),
+and the six proposed forecast combinations (<code>MCS-Comb</code>,
+<code>WL-MCS-Comb</code>, <code>MCS-RS-Comb</code>,
+<code>WL-MCS-RS-Comb</code>, <code>MCS-MS-Comb</code>,
+<code>WL-MCS-MS-Comb</code>).</li>
+</ul>
+<hr />
 </div>
 <div id="code-output-mapping" class="section level2">
 <h2>📊 Code → Output Mapping</h2>
-<div id="replicate_tables_and_figures.r" class="section level3">
-<h3><code>replicate_tables_and_figures.R</code></h3>
-<p>Run this script to replicate all tables and figures in the paper.
-Results are rendered as HTML tables and inline plots.</p>
 <table>
 <colgroup>
 <col width="27%" />
@@ -567,49 +679,68 @@ Results are rendered as HTML tables and inline plots.</p>
 <thead>
 <tr class="header">
 <th align="left">Output</th>
-<th align="left">Script section</th>
+<th align="left">Script</th>
 <th align="left">Data required</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">Table 2 — Summary statistics</td>
-<td align="left"><code>#### Replication of Table 2</code></td>
-<td align="left"><code>SP500_data.RData</code>,
-<code>Shanghai_comp_data.RData</code>,
-<code>Global_Policy_Uncertainty_Data.csv</code></td>
+<td align="left"><code>code/1_replicate_table_2.R</code></td>
+<td align="left"><code>data/raw/SP500_data.RData</code>,
+<code>data/raw/Shanghai_comp_data.RData</code>, and
+<code>data/raw/Global_Policy_Uncertainty_Data.csv</code></td>
 </tr>
 <tr class="even">
 <td align="left">Figure 2(a) — Inclusion plot</td>
-<td align="left"><code>#### Replication of Figure 2(a)</code></td>
-<td align="left"><code>res_shanghai_comp_tau_0.025.RData</code></td>
+<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Either
+<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
+or <code>data/results/shanghai_comp_final_results_generated.RData</code>
+generated by
+<code>code/2_from_intermediary_files_to_final_files.R</code></td>
 </tr>
 <tr class="odd">
 <td align="left">Figure 2(b) — Inclusion plot</td>
-<td align="left"><code>#### Replication of Figure 2(b)</code></td>
-<td align="left"><code>res_shanghai_comp_tau_0.025.RData</code></td>
+<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Either
+<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
+or <code>data/results/shanghai_comp_final_results_generated.RData</code>
+generated by
+<code>code/2_from_intermediary_files_to_final_files.R</code></td>
 </tr>
 <tr class="even">
 <td align="left">Figure 2(c) — Inclusion plot</td>
-<td align="left"><code>#### Replication of Figure 2(c)</code></td>
-<td align="left"><code>res_shanghai_comp_tau_0.025.RData</code></td>
+<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Either
+<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
+or <code>data/results/shanghai_comp_final_results_generated.RData</code>
+generated by
+<code>code/2_from_intermediary_files_to_final_files.R</code></td>
 </tr>
 <tr class="odd">
 <td align="left">Table 5 — S&amp;P 500 out-of-sample evaluation</td>
-<td align="left"><code>#### Replication of Table 5</code></td>
-<td align="left"><code>res_sp500_tau_0.025.RData</code></td>
+<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Either
+<code>data/results/sp500_final_results_precomputed.RData</code> or
+<code>data/results/sp500_final_results_generated.RData</code> generated
+by <code>code/2_from_intermediary_files_to_final_files.R</code></td>
 </tr>
 <tr class="even">
 <td align="left">Table 6 — Shanghai Comp. out-of-sample evaluation</td>
-<td align="left"><code>#### Replication of Table 6</code></td>
-<td align="left"><code>res_shanghai_comp_tau_0.025.RData</code></td>
+<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Either
+<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
+or <code>data/results/shanghai_comp_final_results_generated.RData</code>
+generated by
+<code>code/2_from_intermediary_files_to_final_files.R</code></td>
 </tr>
 <tr class="odd">
 <td align="left">Table 7 — Results across all indices and risk
 levels</td>
-<td align="left"><code>#### Replication of Table 7</code></td>
-<td align="left"><code>all_indices_tau_0.025.RData</code>,
-<code>all_indices_tau_0.01.RData</code></td>
+<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left"><code>data/results/all_indices_tau_0.01.RData</code>
+and <code>data/results/all_indices_tau_0.025.RData</code></td>
 </tr>
 </tbody>
 </table>
@@ -619,39 +750,7 @@ paper, the code should be run under R version 4.4.3. When using
 different R versions or computing environments, small numerical
 differences may arise; these affect only the p-values of these tests and
 do not alter the main conclusions.</p>
-</div>
-<div id="generate_proposed_combinations.r" class="section level3">
-<h3><code>generate_proposed_combinations.R</code></h3>
-<p>Run this script to generate the six proposed forecast combinations.
-For ease of implementation and faster execution, it relies on a
-<strong>simplified (reduced) version</strong> of the original exercise,
-using the Shanghai Composite example dataset.</p>
-<table>
-<colgroup>
-<col width="38%" />
-<col width="61%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th>Output</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Saved <code>.RData</code> file (name set by <code>filename</code>
-variable)</td>
-<td>Contains the six combined VaR and ES forecast series:
-<code>MCS_Comb</code>, <code>WL_MCS_Comb</code>,
-<code>MCS_RSC_Comb</code>, <code>WL_MCS_RSC_Comb</code>,
-<code>MCS_MSC_Comb</code>, <code>WL_MCS_MSC_Comb</code></td>
-</tr>
-</tbody>
-</table>
-<p>Progress is printed to the console at each forecasting step via
-<code>message(tt)</code>.</p>
 <hr />
-</div>
 </div>
 <div id="hardware-and-expected-runtime" class="section level2">
 <h2>⏱️ Hardware and Expected Runtime</h2>
@@ -670,16 +769,22 @@ variable)</td>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left"><code>replicate_tables_and_figures.R</code></td>
+<td align="left"><code>1_replicate_table_2.R</code></td>
 <td align="left">Standard laptop (Intel i5-1135G7 @ 2.4 GHz, 16 GB
 RAM)</td>
-<td align="left">~1–2 minutes</td>
+<td align="left">~few seconds</td>
 </tr>
 <tr class="even">
-<td align="left"><code>generate_proposed_combinations.R</code></td>
+<td align="left"><code>2_from_intermediary_files_to_final_files.R</code></td>
+<td align="left">Dedicated workstation (Intel(R) Core(TM) i9-14900KF
+(3.20 GHz), 64 GB RAM)</td>
+<td align="left">~24 hours per index</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>3_replicate_figure_2_and_tables_5_to_7.R</code></td>
 <td align="left">Standard laptop (Intel i5-1135G7 @ 2.4 GHz, 16 GB
 RAM)</td>
-<td align="left">~3–4 minutes</td>
+<td align="left">~3-4 minutes</td>
 </tr>
 </tbody>
 </table>
