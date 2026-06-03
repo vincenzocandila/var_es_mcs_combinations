@@ -1,8 +1,8 @@
 
-#########################################################################################################################
-### This code replicates Table 2 of the paper:                                             						   	###
-### 'Combining Value-at-Risk and Expected Shortfall Forecasts via the Model Confidence Set'						  	###
-#########################################################################################################################
+###########################################################################################################################
+### This code replicates Table 2 of the paper:                                             						   		###
+### 'Combining Value-at-Risk and Expected Shortfall Forecasts via the Model Confidence Set'						  		###
+###########################################################################################################################
 
 #### Analysis performed using R version 4.4.3
 
