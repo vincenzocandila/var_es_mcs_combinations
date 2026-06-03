@@ -21,6 +21,13 @@ library(zoo)			# Version used: 1.8.13
 library(DT)				# Version used: 0.33
 library(htmltools)		# Version used: 0.5.8.1
 
+### To install GAS:
+
+#install.packages("https://cran.r-project.org/src/contrib/Archive/GAS/GAS_0.3.4.1.tar.gz",
+#                 repos = NULL,
+#                 type = "source")
+
+
 source('functions/main_functions.R')
 
 ##########################################
