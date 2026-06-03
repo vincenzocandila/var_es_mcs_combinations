@@ -14,7 +14,7 @@ Amendola A., Candila V., Naimoli A., and G. Storti (2026),
 
 ## 📅 Assembly Date and Contact
 
-**Package assembled:** 21 May 2026  
+**Package assembled:** 3 June 2026  
 **Contact:** Vincenzo Candila — vcandila@unisa.it  
 *(Please reach out for any questions about the code or data)*
 
@@ -27,10 +27,11 @@ combining_var_es_mcs_combinations/
 ├── README.md
 ├── README.html
 ├── 1_replicate_table_2.R                         # Replicates Table 2
-├── 2_from_intermediary_files_to_final_files.R    # Computes the proposed forecast combinations and benchmarks
-├── 3_replicate_figure_2_and_tables_5_to_7.R      # Replicates Figure 2 and Table 5, 6, and 7
+├── 2_from_raw_files_to_intermediary_files.R      # Computes the VaR and ES forecasts for the 32 models used in the paper
+├── 3_from_intermediary_files_to_final_files.R    # Computes the proposed forecast combinations and benchmarks
+├── 4_replicate_figure_2_and_tables_5_to_7.R      # Replicates Figure 2 and Table 5, 6, and 7
 ├── functions/
-    ├── main_functions.R                          # Core functions used by both scripts
+    ├── main_functions.R                          # Core functions used by all scripts
     ├── AL_lambda.R                               # Asymmetric Laplace loss (lambda variant)
     ├── AL_msc.R                                  # Asymmetric Laplace loss (Minimum score variant)
     ├── beta_esti_ms.R                            # Beta coefficient estimation (Minimum score)
@@ -43,6 +44,13 @@ combining_var_es_mcs_combinations/
     ├── raw/
         ├── sp500_data.RData                      # S&P 500 daily returns and realized volatility measures
         ├── shanghai_comp_data.RData              # Shanghai Composite returns and realized volatility measures
+        ├── bovespa_data.RData                    # BOVESPA daily returns and realized volatility measures
+        ├── bsesn_data.RData                      # BSESN returns and realized volatility measures
+        ├── eurostoxx50_data.RData                # EUROSTOXX50 daily returns and realized volatility measures
+        ├── hsi_data.RData                        # Hang Seng returns and realized volatility measures
+        ├── ixic_data.RData                       # NASDAQ returns and realized volatility measures
+        ├── mxx_data.RData                        # MXX returns and realized volatility measures
+        ├── nikkei_data.RData                     # NIKKEI returns and realized volatility measures
         └── Global_Policy_Uncertainty_Data.csv    # Global Economic Policy Uncertainty index (EPU)
     ├── intermediary/
         ├── sp500_tau_0.025_files.RData           # S&P 500 intermediary files needed to compute the proposed combinations
@@ -75,12 +83,17 @@ combining_var_es_mcs_combinations/
 | `Rsolnp`    | 1.16               | Non-linear optimization (combinations only)        |
 | `DT`        | 0.33               | Interactive HTML tables                            |
 | `htmltools` | 0.5.8.1             | HTML rendering utilities                           |
+| `fGarch`    | 4033.92             |  Estimation of standardized Student-t distribution parameters via `stdFit`                           |
+| `rumidas` | 0.1.3            | MIDAS matrix construction via `mv_into_mat`                          |
+| `quantreg` | 6.1             | Quantile regression estimation via `rq`                        |
+
+
 
 Install all packages at once with:
 
 ```r
 install.packages(c("xts", "zoo", "fBasics", "rugarch",
-                   "np", "esback", "Rsolnp", "DT", "htmltools"))
+                   "np", "esback", "Rsolnp", "DT", "htmltools", "fGarch", "rumidas", "quantreg"))
 # GAS has been removed from CRAN and must be installed manually from the CRAN archive:
 install.packages("https://cran.r-project.org/src/contrib/Archive/GAS/GAS_0.3.4.1.tar.gz",
                  repos = NULL,
@@ -97,26 +110,25 @@ The replication workflow is organized into three main stages:
 
 1. **Raw data**
    - Raw financial and macroeconomic data are stored in `data/raw/`.
-   - These include daily returns, realized volatility measures, and the Global Economic Policy Uncertainty (EPU) index.
+   - These include daily returns and realized volatility measures for all indices considered in the paper, as well as the Global Economic Policy Uncertainty (EPU) index.
    - Table 2 is replicated using the raw data and the script `1_replicate_table_2.R`.
 
 2. **Intermediary data**
-   - The raw data were originally used to generate intermediary `.RData` objects stored in `data/intermediary/`.
+   - The raw data were originally used to generate the intermediary `.RData` objects stored in `data/intermediary/`.
    - These intermediary files contain the VaR and ES forecasts produced by the 32 competing models.
-   - Reproducing the intermediary files from the raw data requires the full re-estimation of all forecasting models and is computationally intensive (approximately one week on a dedicated workstation for each index).
-   - For this reason, the intermediary files are directly included in the replication package.
    - This allows users to fully reproduce the forecast combinations, tables, figures, and empirical results reported in the paper without regenerating the intermediary objects from the raw data.
+   - Alternatively, the intermediary files can be regenerated from the raw data by running the script `2_from_raw_files_to_intermediary_files.R`.
 
 3. **Results**
    - Pre-computed results are stored in `data/results/`.
-   - The script `2_from_intermediary_files_to_final_files.R` (if executed) uses the intermediary datasets to compute the six proposed forecast combinations and the four benchmark methods. The resulting objects are stored in `data/results/` and allow the replication of Figure 2 and Tables 5 and 6 through the script `3_replicate_figure_2_and_tables_5_to_7.R`.
-   - Alternatively, the script `3_replicate_figure_2_and_tables_5_to_7.R` reproduces Figure 2 and Tables 5–7 directly using the pre-computed files included in `data/results/`.
+   - The script `3_from_intermediary_files_to_final_files.R` (if executed) uses the intermediary datasets to compute the six proposed forecast combinations and the four benchmark methods. The resulting objects are stored in `data/results/` and allow the replication of Figure 2 and Tables 5 and 6 through the script `3_replicate_figure_2_and_tables_5_to_7.R`.
+   - Alternatively, the script `4_replicate_figure_2_and_tables_5_to_7.R` reproduces Figure 2 and Tables 5–7 directly using the pre-computed files included in `data/results/`.
 
 ## 🗃️ Raw Data
 
-### SP500 and Shanghai Composite data
+### Index data
 
-- **Files:** `data/raw/sp500_data.RData`, `data/raw/shanghai_comp_data.RData`
+- **Files:** `data/raw/sp500_data.RData`, `data/raw/shanghai_comp_data.RData`, `data/raw/bovespa_data.RData`, `data/raw/bsesn_comp_data.RData`, `data/raw/eurostoxx50_data.RData`, `data/raw/hsi_comp_data.RData`, `data/raw/ixic_comp_data.RData`, `data/raw/mxx_data.RData`, `data/raw/nikkei_comp_data.RData`
 - **Source:** Oxford-Man Institute's Realized Library 
 - **Period used:** January 2013 – June 2022
 - **Variables included in each file:**
@@ -175,13 +187,13 @@ The replication workflow is organized into three main stages:
 
 | Output     | Script  | Data required  |
 |:-----------|:---------------|:---------------|
-| Table 2 — Summary statistics | `code/1_replicate_table_2.R` | `data/raw/SP500_data.RData`, `data/raw/Shanghai_comp_data.RData`, and `data/raw/Global_Policy_Uncertainty_Data.csv` |
-| Figure 2(a) — Inclusion plot | `code/3_replicate_figure_2_and_tables_5_to_7.R` | Either `data/results/shanghai_comp_final_results_precomputed.RData` or `data/results/shanghai_comp_final_results_generated.RData` generated by `code/2_from_intermediary_files_to_final_files.R` |
-| Figure 2(b) — Inclusion plot | `code/3_replicate_figure_2_and_tables_5_to_7.R` | Either `data/results/shanghai_comp_final_results_precomputed.RData` or `data/results/shanghai_comp_final_results_generated.RData` generated by `code/2_from_intermediary_files_to_final_files.R` |
-| Figure 2(c) — Inclusion plot | `code/3_replicate_figure_2_and_tables_5_to_7.R` | Either `data/results/shanghai_comp_final_results_precomputed.RData` or `data/results/shanghai_comp_final_results_generated.RData` generated by `code/2_from_intermediary_files_to_final_files.R` |
-| Table 5 — S&P 500 out-of-sample evaluation | `code/3_replicate_figure_2_and_tables_5_to_7.R` | Either `data/results/sp500_final_results_precomputed.RData` or `data/results/sp500_final_results_generated.RData` generated by `code/2_from_intermediary_files_to_final_files.R` |
-| Table 6 — Shanghai Comp. out-of-sample evaluation | `code/3_replicate_figure_2_and_tables_5_to_7.R` | Either `data/results/shanghai_comp_final_results_precomputed.RData` or `data/results/shanghai_comp_final_results_generated.RData` generated by `code/2_from_intermediary_files_to_final_files.R` |
-| Table 7 — Results across all indices and risk levels | `code/3_replicate_figure_2_and_tables_5_to_7.R` | `data/results/all_indices_tau_0.01.RData` and `data/results/all_indices_tau_0.025.RData` |
+| Table 2 — Summary statistics | `code/1_replicate_table_2.R` | Files in `data/raw/`: `SP500_data.RData`, `Shanghai_comp_data.RData`, `Global_Policy_Uncertainty_Data.csv` |
+| Figure 2(a) — Inclusion plot | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`:Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
+| Figure 2(b) — Inclusion plot | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`:Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
+| Figure 2(c) — Inclusion plot | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`:Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
+| Table 5 — S&P 500 out-of-sample evaluation | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`: Either `sp500_final_results_precomputed.RData` or `sp500_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
+| Table 6 — Shanghai Comp. out-of-sample evaluation | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`: Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
+| Table 7 — Results across all indices and risk levels | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`: `all_indices_tau_0.01.RData` and `all_indices_tau_0.025.RData` |
 
 **Note on Table 5 and Table 6:** To reproduce exactly the p-values of the Bayer & Dimitriadis (2020) tests reported in the paper, the code should be run under R version 4.4.3.
 When using different R versions or computing environments, small numerical differences may arise; these affect only the p-values of these tests and do not alter the main conclusions.
@@ -194,8 +206,9 @@ When using different R versions or computing environments, small numerical diffe
 | Script         | Hardware used               | Approximate runtime |
 |:---------------|:----------------------------|:--------------------|
 | `1_replicate_table_2.R` | Standard laptop (Intel i5-1135G7 @ 2.4 GHz, 16 GB RAM) | ~few seconds |
-| `2_from_intermediary_files_to_final_files.R` | Dedicated workstation (Intel(R) Core(TM) i9-14900KF (3.20 GHz), 64 GB RAM) | ~16 hours per index|
-| `3_replicate_figure_2_and_tables_5_to_7.R` | Standard laptop (Intel i5-1135G7 @ 2.4 GHz, 16 GB RAM) | ~3-4 minutes|
+| `2_from_raw_files_to_intermediary_files.R` | Dedicated workstation (Intel(R) Core(TM) i9-14900KF (3.20 GHz), 64 GB RAM) | ~40 hours per index |
+| `3_from_intermediary_files_to_final_files.R` | Dedicated workstation (Intel(R) Core(TM) i9-14900KF (3.20 GHz), 64 GB RAM) | ~16 hours per index|
+| `4_replicate_figure_2_and_tables_5_to_7.R` | Standard laptop (Intel i5-1135G7 @ 2.4 GHz, 16 GB RAM) | ~3-4 minutes|
 
 
 ---
