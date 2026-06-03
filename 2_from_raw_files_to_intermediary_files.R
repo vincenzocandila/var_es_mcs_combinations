@@ -9,12 +9,12 @@
 #### Load the libraries
 ###################################
 
-library(xts)			# Version used: 0.14.1
-library(zoo)			# Version used: 1.8.13
-library(fGarch)		# Version used: 4033.92
-library(rumidas)		# Version used: 0.1.3
-library(rugarch)		# Version used: 1.5.3
-library(quantreg)		# Version used: 6.1
+library(xts)				# Version used: 0.14.1
+library(zoo)				# Version used: 1.8.13
+library(fGarch)			# Version used: 4033.92
+library(rumidas)			# Version used: 0.1.3
+library(rugarch)			# Version used: 1.5.3
+library(quantreg)			# Version used: 6.1
 
 ###################################
 #### Load the functions
@@ -29,8 +29,8 @@ source("functions/main_functions.R")
 period_of_interest<-"2013-01/2022-06"
 
 #####################################################################
-#### Load S&P 500 or Shanghai Composite (from the Oxford-Man Institute
-#### Realized Library) or one of the other seven indices used in the paper:
+#### Load S&P 500 or Shanghai Composite or
+#### one of the other seven indices used in the paper:
 #### BOVESPA, BSESN, EUROSTOXX50, HSI, IXIC, MXX, and NIKKEI
 #####################################################################
 
