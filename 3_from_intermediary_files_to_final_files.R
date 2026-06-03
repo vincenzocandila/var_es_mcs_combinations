@@ -10,7 +10,6 @@
 #####################################################################################
 
 library(xts)			# Version used: 0.14.1
-library(fBasics)		# Version used: 4041.97
 library(rugarch)		# Version used: 1.5.3
 library(np)				# Version used: 0.60.18
 library(esback)			# Version used: 0.3.1
@@ -18,8 +17,6 @@ library(GAS)			# Version used: 0.3.4.1
 						# Currently, the GAS package has been removed from the CRAN. But previous versions
 						# are available at https://cran.r-project.org/src/contrib/Archive/GAS/
 library(zoo)			# Version used: 1.8.13
-library(DT)				# Version used: 0.33
-library(htmltools)		# Version used: 0.5.8.1
 
 ### To install GAS:
 
