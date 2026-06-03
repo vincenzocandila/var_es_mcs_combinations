@@ -363,7 +363,7 @@ Model Confidence Set</h2>
 </div>
 <div id="assembly-date-and-contact" class="section level2">
 <h2>📅 Assembly Date and Contact</h2>
-<p><strong>Package assembled:</strong> 21 May 2026<br />
+<p><strong>Package assembled:</strong> 3 June 2026<br />
 <strong>Contact:</strong> Vincenzo Candila — <a href="mailto:vcandila@unisa.it" class="email">vcandila@unisa.it</a><br />
 <em>(Please reach out for any questions about the code or data)</em></p>
 <hr />
@@ -373,11 +373,12 @@ Model Confidence Set</h2>
 <pre><code>combining_var_es_mcs_combinations/
 ├── README.md
 ├── README.html
-├── 1_replicate_table_2.R                         # Replicates Table and 2
-├── 2_from_intermediary_files_to_final_files.R    # Computes the proposed forecast combinations and benchmarks
-├── 3_replicate_figure_2_and_tables_5_to_7.R      # Replicates Figure 2 and Table 5, 6, and 7
+├── 1_replicate_table_2.R                         # Replicates Table 2
+├── 2_from_raw_files_to_intermediary_files.R      # Computes the VaR and ES forecasts for the 32 models used in the paper
+├── 3_from_intermediary_files_to_final_files.R    # Computes the proposed forecast combinations and benchmarks
+├── 4_replicate_figure_2_and_tables_5_to_7.R      # Replicates Figure 2 and Table 5, 6, and 7
 ├── functions/
-    ├── main_functions.R                          # Core functions used by both scripts
+    ├── main_functions.R                          # Core functions used by all scripts
     ├── AL_lambda.R                               # Asymmetric Laplace loss (lambda variant)
     ├── AL_msc.R                                  # Asymmetric Laplace loss (Minimum score variant)
     ├── beta_esti_ms.R                            # Beta coefficient estimation (Minimum score)
@@ -390,6 +391,13 @@ Model Confidence Set</h2>
     ├── raw/
         ├── sp500_data.RData                      # S&amp;P 500 daily returns and realized volatility measures
         ├── shanghai_comp_data.RData              # Shanghai Composite returns and realized volatility measures
+        ├── bovespa_data.RData                    # BOVESPA daily returns and realized volatility measures
+        ├── bsesn_data.RData                      # BSESN returns and realized volatility measures
+        ├── eurostoxx50_data.RData                # EUROSTOXX50 daily returns and realized volatility measures
+        ├── hsi_data.RData                        # Hang Seng returns and realized volatility measures
+        ├── ixic_data.RData                       # NASDAQ returns and realized volatility measures
+        ├── mxx_data.RData                        # MXX returns and realized volatility measures
+        ├── nikkei_data.RData                     # NIKKEI returns and realized volatility measures
         └── Global_Policy_Uncertainty_Data.csv    # Global Economic Policy Uncertainty index (EPU)
     ├── intermediary/
         ├── sp500_tau_0.025_files.RData           # S&amp;P 500 intermediary files needed to compute the proposed combinations
@@ -417,71 +425,87 @@ platform-independent)</li>
 <col width="61%" />
 </colgroup>
 <thead>
-<tr class="header">
+<tr>
 <th>Package</th>
 <th>Version (used)</th>
 <th>Purpose</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>xts</code></td>
 <td>0.14.1</td>
 <td>Time series management</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>zoo</code></td>
 <td>1.8.13</td>
 <td>Time series infrastructure</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>fBasics</code></td>
 <td>4041.97</td>
 <td>Summary statistics</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>rugarch</code></td>
 <td>1.5.3</td>
 <td>Model Confidence Set (MCS) procedure via <code>mcsTest</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>GAS</code></td>
 <td>0.3.4.1 (Currently, the GAS package has been removed from the CRAN.
 But previous versions are available at <a href="https://cran.r-project.org/src/contrib/Archive/GAS/" class="uri">https://cran.r-project.org/src/contrib/Archive/GAS/</a>)</td>
 <td>Functions for VaR backtesting (<code>BacktestVaR</code>) and
 Fissler-Ziegel loss evaluation (<code>FZLoss</code>)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>np</code></td>
 <td>0.60.18</td>
 <td>Automatic block length selection via <code>b.star</code> for the
 bootstrap procedure within the MCS</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>esback</code></td>
 <td>0.3.1</td>
 <td>Expected Shortfall backtesting</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>Rsolnp</code></td>
 <td>1.16</td>
 <td>Non-linear optimization (combinations only)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>DT</code></td>
 <td>0.33</td>
 <td>Interactive HTML tables</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>htmltools</code></td>
 <td>0.5.8.1</td>
 <td>HTML rendering utilities</td>
+</tr>
+<tr>
+<td><code>fGarch</code></td>
+<td>4033.92</td>
+<td>Estimation of standardized Student-t distribution parameters via
+<code>stdFit</code></td>
+</tr>
+<tr>
+<td><code>rumidas</code></td>
+<td>0.1.3</td>
+<td>MIDAS matrix construction via <code>mv_into_mat</code></td>
+</tr>
+<tr>
+<td><code>quantreg</code></td>
+<td>6.1</td>
+<td>Quantile regression estimation via <code>rq</code></td>
 </tr>
 </tbody>
 </table>
 <p>Install all packages at once with:</p>
 <pre class="r"><code>install.packages(c(&quot;xts&quot;, &quot;zoo&quot;, &quot;fBasics&quot;, &quot;rugarch&quot;,
-                   &quot;np&quot;, &quot;esback&quot;, &quot;Rsolnp&quot;, &quot;DT&quot;, &quot;htmltools&quot;))
+                   &quot;np&quot;, &quot;esback&quot;, &quot;Rsolnp&quot;, &quot;DT&quot;, &quot;htmltools&quot;, &quot;fGarch&quot;, &quot;rumidas&quot;, &quot;quantreg&quot;))
 # GAS has been removed from CRAN and must be installed manually from the CRAN archive:
 install.packages(&quot;https://cran.r-project.org/src/contrib/Archive/GAS/GAS_0.3.4.1.tar.gz&quot;,
                  repos = NULL,
@@ -500,39 +524,37 @@ R after installing the packages.</p>
 <ul>
 <li>Raw financial and macroeconomic data are stored in
 <code>data/raw/</code>.</li>
-<li>These include daily returns, realized volatility measures, and the
-Global Economic Policy Uncertainty (EPU) index.</li>
+<li>These include daily returns and realized volatility measures for all
+indices considered in the paper, as well as the Global Economic Policy
+Uncertainty (EPU) index.</li>
 <li>Table 2 is replicated using the raw data and the script
 <code>1_replicate_table_2.R</code>.</li>
 </ul></li>
 <li><strong>Intermediary data</strong>
 <ul>
-<li>The raw data were originally used to generate intermediary
+<li>The raw data were originally used to generate the intermediary
 <code>.RData</code> objects stored in
 <code>data/intermediary/</code>.</li>
 <li>These intermediary files contain the VaR and ES forecasts produced
 by the 32 competing models.</li>
-<li>Reproducing the intermediary files from the raw data requires the
-full re-estimation of all forecasting models and is computationally
-intensive (approximately one week on a dedicated workstation for each
-index).</li>
-<li>For this reason, the intermediary files are directly included in the
-replication package.</li>
 <li>This allows users to fully reproduce the forecast combinations,
 tables, figures, and empirical results reported in the paper without
 regenerating the intermediary objects from the raw data.</li>
+<li>Alternatively, the intermediary files can be regenerated from the
+raw data by running the script
+<code>2_from_raw_files_to_intermediary_files.R</code>.</li>
 </ul></li>
 <li><strong>Results</strong>
 <ul>
 <li>Pre-computed results are stored in <code>data/results/</code>.</li>
-<li>The script <code>2_from_intermediary_files_to_final_files.R</code>
+<li>The script <code>3_from_intermediary_files_to_final_files.R</code>
 (if executed) uses the intermediary datasets to compute the six proposed
 forecast combinations and the four benchmark methods. The resulting
 objects are stored in <code>data/results/</code> and allow the
 replication of Figure 2 and Tables 5 and 6 through the script
 <code>3_replicate_figure_2_and_tables_5_to_7.R</code>.</li>
 <li>Alternatively, the script
-<code>3_replicate_figure_2_and_tables_5_to_7.R</code> reproduces Figure
+<code>4_replicate_figure_2_and_tables_5_to_7.R</code> reproduces Figure
 2 and Tables 5–7 directly using the pre-computed files included in
 <code>data/results/</code>.</li>
 </ul></li>
@@ -540,11 +562,18 @@ replication of Figure 2 and Tables 5 and 6 through the script
 </div>
 <div id="raw-data" class="section level2">
 <h2>🗃️ Raw Data</h2>
-<div id="sp500-and-shanghai-composite-data" class="section level3">
-<h3>SP500 and Shanghai Composite data</h3>
+<div id="index-data" class="section level3">
+<h3>Index data</h3>
 <ul>
 <li><strong>Files:</strong> <code>data/raw/sp500_data.RData</code>,
-<code>data/raw/shanghai_comp_data.RData</code></li>
+<code>data/raw/shanghai_comp_data.RData</code>,
+<code>data/raw/bovespa_data.RData</code>,
+<code>data/raw/bsesn_comp_data.RData</code>,
+<code>data/raw/eurostoxx50_data.RData</code>,
+<code>data/raw/hsi_comp_data.RData</code>,
+<code>data/raw/ixic_comp_data.RData</code>,
+<code>data/raw/mxx_data.RData</code>,
+<code>data/raw/nikkei_comp_data.RData</code></li>
 <li><strong>Source:</strong> Oxford-Man Institute’s Realized
 Library</li>
 <li><strong>Period used:</strong> January 2013 – June 2022</li>
@@ -677,70 +706,67 @@ and the six proposed forecast combinations (<code>MCS-Comb</code>,
 <col width="36%" />
 </colgroup>
 <thead>
-<tr class="header">
+<tr>
 <th align="left">Output</th>
 <th align="left">Script</th>
 <th align="left">Data required</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td align="left">Table 2 — Summary statistics</td>
 <td align="left"><code>code/1_replicate_table_2.R</code></td>
-<td align="left"><code>data/raw/SP500_data.RData</code>,
-<code>data/raw/Shanghai_comp_data.RData</code>, and
-<code>data/raw/Global_Policy_Uncertainty_Data.csv</code></td>
+<td align="left">Files in <code>data/raw/</code>:
+<code>SP500_data.RData</code>, <code>Shanghai_comp_data.RData</code>,
+<code>Global_Policy_Uncertainty_Data.csv</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td align="left">Figure 2(a) — Inclusion plot</td>
-<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
-<td align="left">Either
-<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
-or <code>data/results/shanghai_comp_final_results_generated.RData</code>
-generated by
-<code>code/2_from_intermediary_files_to_final_files.R</code></td>
+<td align="left"><code>code/4_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Files in <code>data/results/</code>:Either
+<code>shanghai_comp_final_results_precomputed.RData</code> or
+<code>shanghai_comp_final_results_generated.RData</code> generated by
+<code>code/3_from_intermediary_files_to_final_files.R</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="left">Figure 2(b) — Inclusion plot</td>
-<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
-<td align="left">Either
-<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
-or <code>data/results/shanghai_comp_final_results_generated.RData</code>
-generated by
-<code>code/2_from_intermediary_files_to_final_files.R</code></td>
+<td align="left"><code>code/4_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Files in <code>data/results/</code>:Either
+<code>shanghai_comp_final_results_precomputed.RData</code> or
+<code>shanghai_comp_final_results_generated.RData</code> generated by
+<code>code/3_from_intermediary_files_to_final_files.R</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td align="left">Figure 2(c) — Inclusion plot</td>
-<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
-<td align="left">Either
-<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
-or <code>data/results/shanghai_comp_final_results_generated.RData</code>
-generated by
-<code>code/2_from_intermediary_files_to_final_files.R</code></td>
+<td align="left"><code>code/4_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Files in <code>data/results/</code>:Either
+<code>shanghai_comp_final_results_precomputed.RData</code> or
+<code>shanghai_comp_final_results_generated.RData</code> generated by
+<code>code/3_from_intermediary_files_to_final_files.R</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="left">Table 5 — S&amp;P 500 out-of-sample evaluation</td>
-<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
-<td align="left">Either
-<code>data/results/sp500_final_results_precomputed.RData</code> or
-<code>data/results/sp500_final_results_generated.RData</code> generated
-by <code>code/2_from_intermediary_files_to_final_files.R</code></td>
+<td align="left"><code>code/4_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Files in <code>data/results/</code>: Either
+<code>sp500_final_results_precomputed.RData</code> or
+<code>sp500_final_results_generated.RData</code> generated by
+<code>code/3_from_intermediary_files_to_final_files.R</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td align="left">Table 6 — Shanghai Comp. out-of-sample evaluation</td>
-<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
-<td align="left">Either
-<code>data/results/shanghai_comp_final_results_precomputed.RData</code>
-or <code>data/results/shanghai_comp_final_results_generated.RData</code>
-generated by
-<code>code/2_from_intermediary_files_to_final_files.R</code></td>
+<td align="left"><code>code/4_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Files in <code>data/results/</code>: Either
+<code>shanghai_comp_final_results_precomputed.RData</code> or
+<code>shanghai_comp_final_results_generated.RData</code> generated by
+<code>code/3_from_intermediary_files_to_final_files.R</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="left">Table 7 — Results across all indices and risk
 levels</td>
-<td align="left"><code>code/3_replicate_figure_2_and_tables_5_to_7.R</code></td>
-<td align="left"><code>data/results/all_indices_tau_0.01.RData</code>
-and <code>data/results/all_indices_tau_0.025.RData</code></td>
+<td align="left"><code>code/4_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<td align="left">Files in <code>data/results/</code>:
+<code>all_indices_tau_0.01.RData</code> and
+<code>all_indices_tau_0.025.RData</code></td>
 </tr>
 </tbody>
 </table>
@@ -761,27 +787,33 @@ do not alter the main conclusions.</p>
 <col width="31%" />
 </colgroup>
 <thead>
-<tr class="header">
+<tr>
 <th align="left">Script</th>
 <th align="left">Hardware used</th>
 <th align="left">Approximate runtime</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td align="left"><code>1_replicate_table_2.R</code></td>
 <td align="left">Standard laptop (Intel i5-1135G7 @ 2.4 GHz, 16 GB
 RAM)</td>
 <td align="left">~few seconds</td>
 </tr>
-<tr class="even">
-<td align="left"><code>2_from_intermediary_files_to_final_files.R</code></td>
+<tr>
+<td align="left"><code>2_from_raw_files_to_intermediary_files.R</code></td>
 <td align="left">Dedicated workstation (Intel(R) Core(TM) i9-14900KF
 (3.20 GHz), 64 GB RAM)</td>
-<td align="left">~24 hours per index</td>
+<td align="left">~40 hours per index</td>
 </tr>
-<tr class="odd">
-<td align="left"><code>3_replicate_figure_2_and_tables_5_to_7.R</code></td>
+<tr>
+<td align="left"><code>3_from_intermediary_files_to_final_files.R</code></td>
+<td align="left">Dedicated workstation (Intel(R) Core(TM) i9-14900KF
+(3.20 GHz), 64 GB RAM)</td>
+<td align="left">~16 hours per index</td>
+</tr>
+<tr>
+<td align="left"><code>4_replicate_figure_2_and_tables_5_to_7.R</code></td>
 <td align="left">Standard laptop (Intel i5-1135G7 @ 2.4 GHz, 16 GB
 RAM)</td>
 <td align="left">~3-4 minutes</td>
