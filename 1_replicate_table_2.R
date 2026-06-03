@@ -1,11 +1,10 @@
 
-#### Analysis performed using R version 4.4.3
+############################################################################################################################
+### This code replicates Table 2 of the paper:                                             ###
+### 'Combining Value-at-Risk and Expected Shortfall Forecasts via the Model Confidence Set'                                ###
+############################################################################################################################
 
-########################################################################
-######  REPLICATION CODE FOR		
-######  'Combining Value-at-Risk and Expected Shortfall forecasts
-######  via the Model Confidence Set'
-########################################################################
+#### Analysis performed using R version 4.4.3
 
 ###################################
 #### Load the libraries
@@ -30,13 +29,13 @@ source("functions/main_functions.R")
 period_of_interest<-"2013-01/2022-06"
 
 #####################################################################
-#### Load data (subset from Oxford-Man Institute's Realized Library)
+#### Load SP500 (subset from Oxford-Man Institute's Realized Library)
 #####################################################################
 
-load("data/raw/SP500_data.RData")  # S&P500 data
+load("data/raw/sp500_data.RData")  # S&P500 data
 
 ######################################################################    
-####	SP500_data includes:
+####	sp500_data includes:
 ## 	r_t	  	: daily close-to-close log returns; 
 ## 	rb_ss 	: realized volatility computed using realized bipower variation with subsampling;
 ## 	rk		: realized kernel volatility;
@@ -49,10 +48,14 @@ sum_f(rvol5[period_of_interest]),
 sum_f(rb_ss[period_of_interest]),
 sum_f(rk[period_of_interest]))
 
-load("data/raw/Shanghai_comp_data.RData") ## Shanghai Comp. data
+#####################################################################
+#### Load Shanghai Comp. (subset from Oxford-Man Institute's Realized Library)
+#####################################################################
+
+load("data/raw/shanghai_comp_data.RData") ## Shanghai Comp. data
 
 ######################################################################    
-####	Shanghai_comp_data includes:
+####	shanghai_comp_data includes:
 ## 	r_t	  	: daily close-to-close log returns; 
 ## 	rb_ss 	: realized volatility computed using realized bipower variation with subsampling;
 ## 	rk		: realized kernel volatility;
