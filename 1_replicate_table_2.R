@@ -13,8 +13,8 @@
 library(xts)				# Version used: 0.14.1
 library(fBasics)			# Version used: 4041.97
 library(zoo)				# Version used: 1.8.13
-library(DT)				# Version used: 0.33
-library(htmltools)		# Version used: 0.5.8.1
+library(DT)					# Version used: 0.33
+library(htmltools)			# Version used: 0.5.8.1
 
 ###################################
 #### Load the functions
