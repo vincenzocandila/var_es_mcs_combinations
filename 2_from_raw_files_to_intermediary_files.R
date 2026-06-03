@@ -11,7 +11,7 @@
 
 library(xts)				# Version used: 0.14.1
 library(zoo)				# Version used: 1.8.13
-library(fGarch)			# Version used: 4033.92
+library(fGarch)				# Version used: 4033.92
 library(rumidas)			# Version used: 0.1.3
 library(rugarch)			# Version used: 1.5.3
 library(quantreg)			# Version used: 6.1
