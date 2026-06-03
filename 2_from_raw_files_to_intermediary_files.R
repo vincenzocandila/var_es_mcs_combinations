@@ -1,6 +1,6 @@
 ############################################################################################################################
-### This code generates the VaR and ES forecasts of the 32 models used in the paper:                                             ###
-### 'Combining Value-at-Risk and Expected Shortfall Forecasts via the Model Confidence Set'                                ###
+### This code generates the VaR and ES forecasts of the 32 models used in the paper:                                     ###
+### 'Combining Value-at-Risk and Expected Shortfall Forecasts via the Model Confidence Set'                              ###
 ############################################################################################################################
 
 #### Analysis performed using R version 4.4.3
