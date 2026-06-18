@@ -191,6 +191,7 @@ rownames(final_tab)<-lab_full
 Backtest_all <- as.integer(rowSums(final_tab[, 1:6] >= 0.05) == 6)
 
 final_tab<-cbind(final_tab,Backtest=Backtest_all)
+final_tab_latex <- add_latex_markers(final_tab)
 
 ######################################
 #### Replication of Table 5
@@ -312,6 +313,38 @@ tab_dt_f(final_tab, title = "Table 6: Shanghai Composite out-of-sample evaluatio
 ###################################
 #### Replication of Table 7
 ###################################
+
+######################################################################
+# Table 7 can be directly replicated using the pre-computed files:
+#   - all_indices_tau_0.025.RData
+#   - all_indices_tau_0.01.RData
+#
+# These files contain the evaluation tables for all nine indices
+# considered in the paper. Each evaluation table corresponds to the
+# type of output reported in Tables 5 and 6, i.e., the detailed
+# backtesting and FZLoss results for a single index. The evaluation
+# tables stored in these files already include the LaTeX markers used
+# in the published version of the paper:
+#
+#   - cellcolor{gray!25}: models passing all six backtests;
+#   - cellcolor{gray!50}: models belonging to the Superior Set of
+#                           Models (SSM) of the Model Confidence Set.
+#
+# Table 7 is obtained by aggregating the information contained in
+# these evaluation tables across all nine indices and both coverage
+# levels.
+#
+# Alternatively, users can fully regenerate the evaluation tables
+# from the raw data. For each index and coverage level, this can be
+# done by running Scripts 2, 3, and Script 4 (lines 13--31 and 133--194).
+#
+# The object final_tab_latex obtained at line 194 corresponds to the
+# evaluation table for a single index and should be stored as an
+# element of the list "list_of_tabs". After repeating this procedure
+# for all nine indices, "list_of_tabs" will contain the nine evaluation
+# tables required to reproduce Table 7. This has to be repeat for 
+# all the coverage levels.
+######################################################################
 
 load("data/results/all_indices_tau_0.025.RData")
 
