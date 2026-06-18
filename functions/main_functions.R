@@ -91,6 +91,53 @@ fix_zeros <- function(x) {
   x
 }
 
+################################## Add LaTeX markers
+
+###############################################################################################
+# Adds LaTeX cellcolor markers to an evaluation table
+#
+# Input:
+#   tab -> evaluation table containing, at minimum, the columns:
+#          - FZLoss   : Fissler-Ziegel loss values
+#          - SSM      : indicator equal to 1 if the model belongs to the
+#                       Superior Set of Models (SSM), 0 otherwise
+#          - Backtest : indicator equal to 1 if the model passes all six
+#                       backtests, 0 otherwise
+#
+# Output:
+#   Evaluation table where:
+#     - row names corresponding to models passing all six backtests are
+#       prefixed with "cellcolor{gray!25}";
+#     - FZLoss values corresponding to models belonging to the SSM are
+#       prefixed with "cellcolor{gray!50}".
+#
+# Notes:
+#   The function reproduces the highlighting convention adopted in the
+#   paper. The columns "SSM" and "Backtest" are removed from the final
+#   output after the LaTeX markers have been added.
+###############################################################################################
+
+add_latex_markers <- function(tab){
+
+  out <- tab
+
+  rownames(out) <- ifelse(
+    as.numeric(out[, "Backtest"]) == 1,
+    paste0("cellcolor{gray!25}", rownames(out)),
+    rownames(out)
+  )
+
+  out[, "FZLoss"] <- ifelse(
+    as.numeric(out[, "SSM"]) == 1,
+    paste0("cellcolor{gray!50}", out[, "FZLoss"]),
+    out[, "FZLoss"]
+  )
+
+  out <- out[, !(colnames(out) %in% c("SSM", "Backtest"))]
+
+  as.data.frame(out, stringsAsFactors = FALSE)
+}
+
 ##################################### Cornish-Fisher VaR and ES
 
 ###############################################################################################
