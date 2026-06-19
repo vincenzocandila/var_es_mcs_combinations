@@ -342,7 +342,7 @@ tab_dt_f(final_tab, title = "Table 6: Shanghai Composite out-of-sample evaluatio
 # evaluation table for a single index and should be stored as an
 # element of the list "list_of_tabs". After repeating this procedure
 # for all nine indices, "list_of_tabs" will contain the nine evaluation
-# tables required to reproduce Table 7. This has to be repeat for 
+# tables required to reproduce Table 7. This has to be repeated for 
 # all the coverage levels.
 ######################################################################
 
