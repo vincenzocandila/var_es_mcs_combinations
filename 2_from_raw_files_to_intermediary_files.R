@@ -231,8 +231,6 @@ r_t_oos_full<-r_t_est[(Tin+1):length(r_t_est)]
 
 r_t_in_s_matrix[,tt]<-coredata(r_t_in_s_tin)
 
-#r_t_est_cycle_gm<-r_t_est[1:day_end_est]
-
 ################################################## X variables
 
 rvol_5_est_cycle<-rvol5[tt:day_end_est]
@@ -1870,6 +1868,8 @@ if (tt == 1) {
 ## 
 if (tt %% 10 == 0) message("tt: ", tt, " out of ", nstep)
 
+r_t_oos<-coredata(r_t_oos_full)
+
 if (tt %% 50 == 0| tt == nstep){
 save(
 tt,
@@ -1881,6 +1881,7 @@ nstep,
 VaR_oos,
 ES_oos,
 r_t_oos_full,
+r_t_oos,
 r_t_in_s_matrix,
 VaR_training_data_mod,
 ES_training_data_mod,
