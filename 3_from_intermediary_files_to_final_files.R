@@ -157,7 +157,10 @@ for (tt in 1:nstep) {
   # Backtesting 
   # ----------------------------------------------------------------------------------
 
-  for (i in seq_len(N_model)) {
+for (i in seq_len(N_model)) {
+
+  suppressWarnings({
+
     v <- VaR_s[, i]
     e <- ES_s[, i]
 
@@ -172,7 +175,10 @@ for (tt in 1:nstep) {
       esr_backtest(r_s, v, e, tau, version = 2)$pvalue_twosided_asymptotic,
       esr_backtest(r_s, v, e, tau, version = 3)$pvalue_twosided_asymptotic
     ), 3)
-  }
+
+  })
+
+}
   
 
   # ----------------------------------------------------------------------------------
@@ -257,7 +263,7 @@ for (tt in 1:nstep) {
                     byrow = TRUE)
     
     # Estimate the RSC lambda parameter
-    temp <- lambda_esti(rets, tau, VaRm, ESm, FZmat)
+    temp <- suppressWarnings(lambda_esti(rets, tau, VaRm, ESm, FZmat))
     RSC_lambda_store[[tt]] <- lambda <- temp$esti
     RSC_AL_store[[tt]]     <- AL     <- temp$AL
     
@@ -319,7 +325,7 @@ for (tt in 1:nstep) {
                     byrow = TRUE)
     
     # Estimate the RSC lambda parameter
-    temp <- lambda_esti(rets, tau, VaRm, ESm, FZmat)
+    temp <- suppressWarnings(lambda_esti(rets, tau, VaRm, ESm, FZmat))
     WL_RSC_lambda_store[[tt]] <- lambda <- temp$esti
     WL_RSC_AL_store[[tt]]     <- AL     <- temp$AL
     
@@ -369,7 +375,7 @@ for (tt in 1:nstep) {
     nmod     <- n_mcs_models
     
     # Estimate MSC beta coefficients
-    fit  <- beta_esti_ms(rets, tau, VaRm_mcs, ESm_mcs)
+    fit  <- suppressWarnings(beta_esti_ms(rets, tau, VaRm_mcs, ESm_mcs))
     beta <- fit$esti
     AL   <- fit$AL
     MSC_AL_store[tt] <- AL
@@ -419,7 +425,7 @@ for (tt in 1:nstep) {
     nmod     <- n_mcs_models
     
     # Estimate MSC beta coefficients
-    fit  <- beta_esti_ms(rets, tau, VaRm_mcs, ESm_mcs)
+    fit  <- suppressWarnings(beta_esti_ms(rets, tau, VaRm_mcs, ESm_mcs))
     beta <- fit$esti
     AL   <- fit$AL
     WL_MSC_AL_store[tt] <- AL
