@@ -4088,3 +4088,246 @@ print.rqmidas(res_f)
    with(eigen(x), vectors %*% (values^p* t(vectors)))
 
 
+################################## NA replacing function (1)
+
+###############################################################################################
+# Replaces missing values in each column of a matrix with the corresponding column mean
+# Input  : numeric matrix
+# Output : matrix with missing values replaced by column means
+###############################################################################################
+
+  clean_NA_matrix <- function(X){
+
+    for(m in seq_len(ncol(X))){
+
+      col_vals <- X[, m]
+
+      if(anyNA(col_vals)){
+
+        mean_val <- mean(col_vals, na.rm = TRUE)
+
+        if(is.finite(mean_val)){
+          X[is.na(col_vals), m] <- mean_val
+        }
+      }
+    }
+
+    return(X)
+  }
+
+################################## NA replacing function (2)
+
+###############################################################################################
+# Replaces missing values in each slice of a 3-dimensional array with the corresponding
+# column mean
+# Input  : numeric 3-dimensional array
+# Output : array with missing values replaced by column means
+###############################################################################################
+
+  clean_NA_array <- function(X){
+
+    for(tt in seq_len(dim(X)[3])){
+
+      for(m in seq_len(dim(X)[2])){
+
+        col_vals <- X[, m, tt]
+
+        if(anyNA(col_vals)){
+
+          mean_val <- mean(col_vals, na.rm = TRUE)
+
+          if(is.finite(mean_val)){
+            X[is.na(col_vals), m, tt] <- mean_val
+          }
+        }
+      }
+    }
+
+    return(X)
+  }
+
+################################## Cleaning function
+
+
+###############################################################################################
+# Cleans VaR and ES forecasts by replacing missing values, correcting extreme negative
+# outliers, and removing positive VaR values. Corrections applied to the out-of-sample
+# forecasts are consistently propagated to the corresponding training arrays.
+# Input  : VaR and ES out-of-sample forecasts, training arrays, training window length,
+#          out-of-sample size, benchmark model, and threshold multiplier
+# Output : list containing the cleaned VaR and ES forecasts, updated training arrays,
+#          the dynamic threshold, and the indices of the cleaned models
+###############################################################################################
+
+clean_function <- function(VaR_oos,
+                           ES_oos,
+                           VaR_training_data_mod,
+                           ES_training_data_mod,
+                           Tin,
+                           nstep,
+                           benchmark = "GJR-t",
+                           multiplier = 2){
+
+ #### 0. NA replacement ####
+
+  VaR_oos <- clean_NA_matrix(VaR_oos)
+  ES_oos  <- clean_NA_matrix(ES_oos)
+
+  VaR_training_data_mod <- clean_NA_array(VaR_training_data_mod)
+  ES_training_data_mod  <- clean_NA_array(ES_training_data_mod)
+
+  #### 1. Dynamic threshold ####
+  benchmark_min <- min(VaR_oos[, benchmark], na.rm = TRUE)
+  threshold <- multiplier * benchmark_min
+
+  min_VaR <- apply(VaR_oos, 2, min, na.rm = TRUE)
+  models_to_clean <- which(min_VaR < threshold)
+
+  message("Models cleaned for negative values: ",
+          paste(colnames(VaR_oos)[models_to_clean], collapse = ", "))
+
+  #### 2. Outliers in negative values ####
+  for(m in models_to_clean){
+
+    repeat{
+
+      to_replace_index <- which(VaR_oos[, m] < threshold)
+
+      if(length(to_replace_index) == 0) break
+
+      to_replace_index <- to_replace_index[
+        order(VaR_oos[to_replace_index, m])
+      ]
+
+      for(tt in to_replace_index){
+
+        if(tt <= 1 || tt >= nstep) next
+
+        to_replace_VaR <- mean(c(VaR_oos[tt - 1, m],
+                                 VaR_oos[tt + 1, m]),
+                               na.rm = TRUE)
+
+        to_replace_ES <- mean(c(ES_oos[tt - 1, m],
+                                ES_oos[tt + 1, m]),
+                              na.rm = TRUE)
+
+        VaR_oos[tt, m] <- to_replace_VaR
+        ES_oos[tt, m]  <- to_replace_ES
+
+        KK <- min(Tin, nstep - tt)
+
+        if(KK <= 0) next
+
+        i_idx <- seq(Tin, Tin - KK + 1, by = -1)
+        t_idx <- (tt + 1):(tt + KK)
+
+        VaR_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)] <- to_replace_VaR
+        ES_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)]  <- to_replace_ES
+      }
+   
+    }
+  }
+
+ #### 3. Positive values ####
+
+get_negative_neighbour <- function(x, pos){
+
+  n <- length(x)
+
+  left <- pos - 1
+  right <- pos + 1
+
+  vals <- c()
+
+  while(left >= 1 || right <= n){
+
+    if(left >= 1 && is.finite(x[left]) && x[left] < 0)
+      vals <- c(vals, x[left])
+
+    if(right <= n && is.finite(x[right]) && x[right] < 0)
+      vals <- c(vals, x[right])
+
+    if(length(vals) > 0)
+      return(mean(vals))
+
+    left <- left - 1
+    right <- right + 1
+  }
+
+  return(NA_real_)
+}
+
+repeat{
+
+  positive_oos <- which(VaR_oos > 0, arr.ind = TRUE)
+
+  positive_training <- which(VaR_training_data_mod > 0, arr.ind = TRUE)
+
+  if(nrow(positive_oos) == 0 && nrow(positive_training) == 0)
+    break
+
+  #### 3a. Positive values in VaR_oos and ES_oos ####
+  if(nrow(positive_oos) > 0){
+
+    for(j in seq_len(nrow(positive_oos))){
+
+      tt <- positive_oos[j, 1]
+      m  <- positive_oos[j, 2]
+
+      to_replace_VaR <- get_negative_neighbour(VaR_oos[, m], tt)
+      to_replace_ES  <- get_negative_neighbour(ES_oos[, m], tt)
+
+      if(is.na(to_replace_VaR) || is.na(to_replace_ES))
+        stop(sprintf("Non trovo vicini negativi per VaR_oos: m=%d, tt=%d", m, tt))
+
+      VaR_oos[tt, m] <- to_replace_VaR
+      ES_oos[tt, m]  <- to_replace_ES
+
+      KK <- min(Tin, nstep - tt)
+
+      if(KK > 0){
+
+        i_idx <- seq(Tin, Tin - KK + 1, by = -1)
+        t_idx <- (tt + 1):(tt + KK)
+
+        VaR_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)] <- to_replace_VaR
+        ES_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)]  <- to_replace_ES
+      }
+    }
+  }
+
+  #### 3b. Positive values in arrays ####
+  positive_training <- which(VaR_training_data_mod > 0, arr.ind = TRUE)
+
+  if(nrow(positive_training) > 0){
+
+    for(j in seq_len(nrow(positive_training))){
+
+      i  <- positive_training[j, 1]
+      m  <- positive_training[j, 2]
+      tt <- positive_training[j, 3]
+
+      to_replace_VaR <- get_negative_neighbour(VaR_training_data_mod[, m, tt], i)
+      to_replace_ES  <- get_negative_neighbour(ES_training_data_mod[, m, tt], i)
+
+      if(is.na(to_replace_VaR) || is.na(to_replace_ES))
+        stop(sprintf("Non trovo vicini negativi nel training: i=%d, m=%d, tt=%d", i, m, tt))
+
+      VaR_training_data_mod[i, m, tt] <- to_replace_VaR
+      ES_training_data_mod[i, m, tt]  <- to_replace_ES
+    }
+  }
+}
+
+  return(list(
+  VaR_oos = VaR_oos,
+  ES_oos = ES_oos,
+  VaR_training_data_mod = VaR_training_data_mod,
+  ES_training_data_mod = ES_training_data_mod,
+  threshold = threshold,
+  models_negative_cleaned = models_to_clean
+  ))
+}
+
+
+
