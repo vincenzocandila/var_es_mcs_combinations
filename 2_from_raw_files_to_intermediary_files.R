@@ -1868,11 +1868,55 @@ if (tt == 1) {
 ## 
 if (tt %% 10 == 0) message("tt: ", tt, " out of ", nstep)
 
-r_t_oos<-coredata(r_t_oos_full)
 
 if (tt %% 50 == 0| tt == nstep){
 save(
 tt,
+Tin,
+tau,
+list_of_models,
+N_model,
+nstep,
+VaR_oos,
+ES_oos,
+r_t_oos_full,
+r_t_in_s_matrix,
+VaR_training_data_mod,
+ES_training_data_mod,
+file=filename)
+
+
+}
+
+} # 
+
+
+
+############################################
+############################################
+############################################ Cleaning data
+############################################
+############################################
+
+r_t_oos<-coredata(r_t_oos_full)
+
+cleaned <- clean_function(
+  VaR_oos = VaR_oos,
+  ES_oos = ES_oos,
+  VaR_training_data_mod = VaR_training_data_mod,
+  ES_training_data_mod = ES_training_data_mod,
+  benchmark= "GJR-t",
+  multiplier = 1.5,
+  Tin = Tin,
+  nstep = nstep
+)
+
+VaR_oos<- cleaned$VaR_oos
+ES_oos<- cleaned$ES_oos
+VaR_training_data_mod<- cleaned$VaR_training_data_mod
+ES_training_data_mod<- cleaned$ES_training_data_mod
+
+save(
 Tin,
 tau,
 list_of_models,
@@ -1886,10 +1930,5 @@ r_t_in_s_matrix,
 VaR_training_data_mod,
 ES_training_data_mod,
 file=filename)
-
-
-}
-
-} # 
 
 
