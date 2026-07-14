@@ -44,20 +44,20 @@ lambda_esti <- function(rets, alfa, VaRm, ESm, FZmat) {
     fun <- function(x) AL_lambda(x, rets, alfa, VaRm, ESm, FZmat, out)
     
     # First optimization using (simplex method)
-    result <- optim(startmat[jj], fun, method = "Nelder-Mead", 
-                    control = list(warn.1d.NelderMead = FALSE))
+    result <- suppressWarnings(optim(startmat[jj], fun, method = "Nelder-Mead", 
+                    control = list(warn.1d.NelderMead = FALSE)))
     
     ffstore[jj, 1] <- result$par
     ffstore[jj, 2] <- result$value
     
     # Iteration loop for quasi newton and simplex optimization
     for (ii in 1:nrep) {  # Changed from jj to ii to avoid confusion
-      result <- optim(ffstore[jj, 1], fun, method = "BFGS")
+      result <- suppressWarnings(optim(ffstore[jj, 1], fun, method = "BFGS"))
       ffstore[jj, 1] <- result$par
       ffstore[jj, 2] <- result$value
       
-      result2 <- optim(ffstore[jj, 1], fun, method = "Nelder-Mead", 
-                       control = list(warn.1d.NelderMead = FALSE))
+      result2 <- suppressWarnings(optim(ffstore[jj, 1], fun, method = "Nelder-Mead", 
+                       control = list(warn.1d.NelderMead = FALSE)))
       ffstore[jj, 1] <- result2$par
       ffstore[jj, 2] <- result2$value
       
@@ -69,6 +69,8 @@ lambda_esti <- function(rets, alfa, VaRm, ESm, FZmat) {
   }
   
   # Select best estimate and report output
+  index <- which(ffstore[,2]<1e+100)
+  ffstore <- ffstore[index,]
   ffstore <- ffstore[order(ffstore[, 2]), ]
   esti <- ffstore[1, 1]
   AL <- ffstore[1, 2]

@@ -46,5 +46,5 @@ est=vt+rowSums(betae*(ESm-VaRm))
   }
   
 #Return the selected output
-  return(AL)
+  return(output)
 }

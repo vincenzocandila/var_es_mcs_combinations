@@ -1591,6 +1591,9 @@ N<-length(r_t_in_s)
 
 }
 
+############################################### set seed
+
+set.seed(123)
 
 ############################################### Estimation
 
@@ -4146,188 +4149,167 @@ print.rqmidas(res_f)
     return(X)
   }
 
-################################## Cleaning function
+
+################################## Check function
 
 
 ###############################################################################################
-# Cleans VaR and ES forecasts by replacing missing values, correcting extreme negative
-# outliers, and removing positive VaR values. Corrections applied to the out-of-sample
-# forecasts are consistently propagated to the corresponding training arrays.
-# Input  : VaR and ES out-of-sample forecasts, training arrays, training window length,
-#          out-of-sample size, benchmark model, and threshold multiplier
-# Output : list containing the cleaned VaR and ES forecasts, updated training arrays,
-#          the dynamic threshold, and the indices of the cleaned models
+# Evaluates the numerical stability of a fitted GARCH model
+# Input  : fitted rugarch model object (fit_obj) and Student-t indicator (is_t)
+# Output : list with stability diagnostics (ok, reason, df_hat, kappa_H, nyblom_joint)
 ###############################################################################################
 
-clean_function <- function(VaR_oos,
-                           ES_oos,
-                           VaR_training_data_mod,
-                           ES_training_data_mod,
-                           Tin,
-                           nstep,
-                           benchmark = "GJR-t",
-                           multiplier = 2){
+check_stability <- function(fit_obj, is_t = FALSE) {
 
- #### 0. NA replacement ####
+  ok <- TRUE
+  reason <- character()
 
-  VaR_oos <- clean_NA_matrix(VaR_oos)
-  ES_oos  <- clean_NA_matrix(ES_oos)
+  if (identical(fit_obj, NA) || any(is.na(coef(fit_obj)))) {
+    return(list(
+      ok = FALSE,
+      reason = "Missing coefficients",
+      df_hat = NA,
+      kappa_H = NA,
+      nyblom_joint = NA
+    ))
+  }
 
-  VaR_training_data_mod <- clean_NA_array(VaR_training_data_mod)
-  ES_training_data_mod  <- clean_NA_array(ES_training_data_mod)
+  df_hat <- if (is_t)
+    tryCatch(as.numeric(fit_obj@fit$coef["shape"]),
+             error = function(e) NA)
+  else
+    NA
 
-  #### 1. Dynamic threshold ####
-  benchmark_min <- min(VaR_oos[, benchmark], na.rm = TRUE)
-  threshold <- multiplier * benchmark_min
-
-  min_VaR <- apply(VaR_oos, 2, min, na.rm = TRUE)
-  models_to_clean <- which(min_VaR < threshold)
-
-  message("Models cleaned for negative values: ",
-          paste(colnames(VaR_oos)[models_to_clean], collapse = ", "))
-
-  #### 2. Outliers in negative values ####
-  for(m in models_to_clean){
-
-    repeat{
-
-      to_replace_index <- which(VaR_oos[, m] < threshold)
-
-      if(length(to_replace_index) == 0) break
-
-      to_replace_index <- to_replace_index[
-        order(VaR_oos[to_replace_index, m])
-      ]
-
-      for(tt in to_replace_index){
-
-        if(tt <= 1 || tt >= nstep) next
-
-        to_replace_VaR <- mean(c(VaR_oos[tt - 1, m],
-                                 VaR_oos[tt + 1, m]),
-                               na.rm = TRUE)
-
-        to_replace_ES <- mean(c(ES_oos[tt - 1, m],
-                                ES_oos[tt + 1, m]),
-                              na.rm = TRUE)
-
-        VaR_oos[tt, m] <- to_replace_VaR
-        ES_oos[tt, m]  <- to_replace_ES
-
-        KK <- min(Tin, nstep - tt)
-
-        if(KK <= 0) next
-
-        i_idx <- seq(Tin, Tin - KK + 1, by = -1)
-        t_idx <- (tt + 1):(tt + KK)
-
-        VaR_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)] <- to_replace_VaR
-        ES_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)]  <- to_replace_ES
-      }
-   
+  if (is_t) {
+    if (is.na(df_hat) || df_hat < SHAPE_MIN || df_hat > SHAPE_MAX) {
+      ok <- FALSE
+      reason <- c(reason, "Shape parameter outside acceptable range")
     }
   }
 
- #### 3. Positive values ####
+  H <- tryCatch(fit_obj@fit$hessian, error = function(e) NULL)
+  kappa_H <- tryCatch(kappa(H), error = function(e) Inf)
 
-get_negative_neighbour <- function(x, pos){
-
-  n <- length(x)
-
-  left <- pos - 1
-  right <- pos + 1
-
-  vals <- c()
-
-  while(left >= 1 || right <= n){
-
-    if(left >= 1 && is.finite(x[left]) && x[left] < 0)
-      vals <- c(vals, x[left])
-
-    if(right <= n && is.finite(x[right]) && x[right] < 0)
-      vals <- c(vals, x[right])
-
-    if(length(vals) > 0)
-      return(mean(vals))
-
-    left <- left - 1
-    right <- right + 1
+  if (is.null(H) || is.na(kappa_H) || kappa_H > KAPPA_MAX) {
+    ok <- FALSE
+    reason <- c(reason, "Ill-conditioned Hessian")
   }
 
-  return(NA_real_)
-}
+  nyblom_joint <- tryCatch(nyblom(fit_obj)$JointStat,
+                           error = function(e) Inf)
 
-repeat{
-
-  positive_oos <- which(VaR_oos > 0, arr.ind = TRUE)
-
-  positive_training <- which(VaR_training_data_mod > 0, arr.ind = TRUE)
-
-  if(nrow(positive_oos) == 0 && nrow(positive_training) == 0)
-    break
-
-  #### 3a. Positive values in VaR_oos and ES_oos ####
-  if(nrow(positive_oos) > 0){
-
-    for(j in seq_len(nrow(positive_oos))){
-
-      tt <- positive_oos[j, 1]
-      m  <- positive_oos[j, 2]
-
-      to_replace_VaR <- get_negative_neighbour(VaR_oos[, m], tt)
-      to_replace_ES  <- get_negative_neighbour(ES_oos[, m], tt)
-
-      if(is.na(to_replace_VaR) || is.na(to_replace_ES))
-        stop(sprintf("Non trovo vicini negativi per VaR_oos: m=%d, tt=%d", m, tt))
-
-      VaR_oos[tt, m] <- to_replace_VaR
-      ES_oos[tt, m]  <- to_replace_ES
-
-      KK <- min(Tin, nstep - tt)
-
-      if(KK > 0){
-
-        i_idx <- seq(Tin, Tin - KK + 1, by = -1)
-        t_idx <- (tt + 1):(tt + KK)
-
-        VaR_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)] <- to_replace_VaR
-        ES_training_data_mod[cbind(i_idx, rep(m, KK), t_idx)]  <- to_replace_ES
-      }
-    }
+  if (is.na(nyblom_joint) || nyblom_joint > NYBLOM_MAX) {
+    ok <- FALSE
+    reason <- c(reason, "Unstable Nyblom statistic")
   }
 
-  #### 3b. Positive values in arrays ####
-  positive_training <- which(VaR_training_data_mod > 0, arr.ind = TRUE)
+  list(
+    ok = ok,
+    reason = paste(reason, collapse = "; "),
+    df_hat = df_hat,
+    kappa_H = kappa_H,
+    nyblom_joint = nyblom_joint
+  )
+}
 
-  if(nrow(positive_training) > 0){
+################################## Robust Realized GARCH function
 
-    for(j in seq_len(nrow(positive_training))){
+###############################################################################################
+# Fits a Realized GARCH model using a sequence of increasingly robust estimation strategies
+# Input  : return series, realized measure, rugarch specification, and Student-t indicator
+# Output : list containing the fitted model, estimation method, and stability diagnostics
+###############################################################################################
 
-      i  <- positive_training[j, 1]
-      m  <- positive_training[j, 2]
-      tt <- positive_training[j, 3]
+fit_robust <- function(r_data, realized_measure, spec_base, is_t = FALSE) {
 
-      to_replace_VaR <- get_negative_neighbour(VaR_training_data_mod[, m, tt], i)
-      to_replace_ES  <- get_negative_neighbour(ES_training_data_mod[, m, tt], i)
+  ##### Attempt 1: hybrid solver (fastest approach) #####
+  fit1 <- tryCatch(
+    ugarchfit(data = r_data * 100,
+              spec = spec_base,
+              realizedVol = realized_measure * 100,
+              solver = "hybrid",
+              out.sample = lstep),
+    error = function(e) NA
+  )
 
-      if(is.na(to_replace_VaR) || is.na(to_replace_ES))
-        stop(sprintf("Non trovo vicini negativi nel training: i=%d, m=%d, tt=%d", i, m, tt))
-
-      VaR_training_data_mod[i, m, tt] <- to_replace_VaR
-      ES_training_data_mod[i, m, tt]  <- to_replace_ES
-    }
+  if (!identical(fit1, NA) && all(!is.na(coef(fit1)))) {
+    diag1 <- check_stability(fit1, is_t)
+    if (diag1$ok)
+      return(list(fit = fit1, method = "hybrid", diag = diag1))
   }
-}
 
-  return(list(
-  VaR_oos = VaR_oos,
-  ES_oos = ES_oos,
-  VaR_training_data_mod = VaR_training_data_mod,
-  ES_training_data_mod = ES_training_data_mod,
-  threshold = threshold,
-  models_negative_cleaned = models_to_clean
-  ))
-}
+  ##### Attempt 2: gosolnp solver with multiple restarts #####
+  fit2 <- tryCatch(
+    ugarchfit(data = r_data * 100,
+              spec = spec_base,
+              realizedVol = realized_measure * 100,
+              solver = "gosolnp",
+              out.sample = lstep,
+              solver.control = list(n.restarts = GOSOLNP_RESTARTS,
+                                    n.sim = 500)),
+    error = function(e) NA
+  )
 
+  if (!identical(fit2, NA) && all(!is.na(coef(fit2)))) {
+    diag2 <- check_stability(fit2, is_t)
+    if (diag2$ok)
+      return(list(fit = fit2, method = "gosolnp", diag = diag2))
+  }
+
+  ##### Attempt 3: fix eta21 = 0 to reduce collinearity in the measurement equation #####
+  spec_constrained <- spec_base
+  setfixed(spec_constrained) <- list(eta21 = 0)
+
+  fit3 <- tryCatch(
+    ugarchfit(data = r_data * 100,
+              spec = spec_constrained,
+              realizedVol = realized_measure * 100,
+              solver = "hybrid",
+              out.sample = lstep),
+    error = function(e) NA
+  )
+
+  if (!identical(fit3, NA) && all(!is.na(coef(fit3)))) {
+    diag3 <- check_stability(fit3, is_t)
+    if (diag3$ok)
+      return(list(fit = fit3,
+                  method = "hybrid_eta21_fixed",
+                  diag = diag3))
+  }
+
+  ##### Attempt 4: fix eta21 = 0 and use the gosolnp solver (last resort) #####
+  fit4 <- tryCatch(
+    ugarchfit(data = r_data * 100,
+              spec = spec_constrained,
+              realizedVol = realized_measure * 100,
+              solver = "gosolnp",
+              out.sample = lstep,
+              solver.control = list(n.restarts = GOSOLNP_RESTARTS,
+                                    n.sim = 500)),
+    error = function(e) NA
+  )
+
+  if (!identical(fit4, NA) && all(!is.na(coef(fit4)))) {
+    diag4 <- check_stability(fit4, is_t)
+    return(list(fit = fit4,
+                method = "gosolnp_eta21_fixed",
+                diag = diag4))
+  }
+
+  ##### If all attempts fail, return the first available fitted model #####
+  candidates <- list(fit1, fit2, fit3)
+  candidates <- candidates[!sapply(candidates, function(x) identical(x, NA))]
+
+  if (length(candidates) == 0)
+    stop("Model estimation failed: all fitting attempts returned NA.")
+
+  fallback <- candidates[[1]]
+
+  warning("A numerically stable fit could not be obtained for this rolling window; using the first available fitted model.")
+
+  list(fit = fallback,
+       method = "unresolved",
+       diag = check_stability(fallback, is_t))
+}
 
 

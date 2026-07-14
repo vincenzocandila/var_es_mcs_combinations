@@ -53,18 +53,20 @@ fstore[,last] <- apply(temp,1,'AL_msc',rets, alfa, VaRm, ESm,out)
     
 
  # First optimization using (simplex method)
-result <- optim(startmat[jj,], fun, method = "Nelder-Mead",control=list(warn.1d.NelderMead="FALSE"))#control = list(maxit = 2000), silent = TRUE)
+result <- suppressWarnings(optim(startmat[jj,], fun, method = "Nelder-Mead",
+control=list(warn.1d.NelderMead="FALSE")))#control = list(maxit = 2000), silent = TRUE))
     
       ffstore[jj, -last] <- result$par
       ffstore[jj, last] <- result$value
     
     # Iteration loop for quasi newton and simplex optimization
     for (jj in 1:nrep) {
-      result <- optim(ffstore[jj, 1:2*nmod], fun, method = "BFGS")
+      result <- suppressWarnings(optim(ffstore[jj, 1:2*nmod], fun, method = "BFGS"))
       ffstore[jj, -last] <- result$par
       ffstore[jj, last] <- result$value
       
-      result2 <- optim(ffstore[jj, 1:2*nmod], fun, method = "Nelder-Mead",control=list(warn.1d.NelderMead="FALSE"))
+      result2 <- suppressWarnings(optim(ffstore[jj, 1:2*nmod], fun, method = "Nelder-Mead",
+control=list(warn.1d.NelderMead="FALSE")))
       ffstore[jj, -last] <- result2$par
       ffstore[jj, last] <- result2$value
       
@@ -76,7 +78,9 @@ result <- optim(startmat[jj,], fun, method = "Nelder-Mead",control=list(warn.1d.
   }
   
   # Select best estimate and report output
-  ffstore <- ffstore[order(ffstore[,2]), ]
+  index=which(ffstore[,last]<1e+100)
+  ffstore=ffstore[index,]
+  ffstore <- ffstore[order(ffstore[,last]), ]
   esti <- ffstore[1, -last]
 AL <- ffstore[1, last]
   
