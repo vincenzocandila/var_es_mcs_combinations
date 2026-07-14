@@ -84,6 +84,10 @@ theta <- 0.06
 ### Total number of competing models
 M <- N_model 
 
+### Set seed
+
+set.seed(123)
+
 
 #####################################################################################
 # 5. Initialize output objects
