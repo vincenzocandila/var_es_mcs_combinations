@@ -129,7 +129,7 @@ Backtesting_pvalues<- array(NA,dim=c(N_model,6,nstep))
 # 6. Main loop: compute backtesting pvalues, MCS and forecast combinations at each step 
 #####################################################################################
 
-for (tt in 1:nstep) {
+for (tt in 1:nstep) { 
 
   # Compute the FZ loss for each model over the training period
   db_loss_training <- matrix(NA, nrow = Tin, ncol = M)

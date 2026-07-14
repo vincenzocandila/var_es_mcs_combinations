@@ -173,11 +173,11 @@ r_t_oos<-coredata(r_t_oos_full)
 
 for (i in 1:N_model_full){
 # Bayer & Dimitriadis (2020) test version 1
-cols_es[i,1]<-as.numeric(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 1)$pvalue_twosided_asymptotic)
+cols_es[i,1]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 1)$pvalue_twosided_asymptotic))
 # Bayer & Dimitriadis (2020) test version 2
-cols_es[i,2]<-as.numeric(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 2)$pvalue_twosided_asymptotic)
+cols_es[i,2]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 2)$pvalue_twosided_asymptotic))
 # Bayer & Dimitriadis (2020) test version 3
-cols_es[i,3]<-as.numeric(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 3)$pvalue_twosided_asymptotic)
+cols_es[i,3]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 3)$pvalue_twosided_asymptotic))
 message(i)
 }
 
@@ -191,7 +191,7 @@ rownames(final_tab)<-lab_full
 Backtest_all <- as.integer(rowSums(final_tab[, 1:6] >= 0.05) == 6)
 
 final_tab<-cbind(final_tab,Backtest=Backtest_all)
-final_tab_latex <- add_latex_markers(final_tab)
+final_tab_latex <- add_latex_markers(final_tab)   
 
 ######################################
 #### Replication of Table 5
@@ -344,6 +344,14 @@ tab_dt_f(final_tab, title = "Table 6: Shanghai Composite out-of-sample evaluatio
 # for all nine indices, "list_of_tabs" will contain the nine evaluation
 # tables required to reproduce Table 7. This has to be repeated for 
 # all the coverage levels.
+# 
+# Specifically, after line 194, initialize the list (only once) and store each
+# evaluation table as follows:
+# list_of_tabs <- list()
+# list_of_tabs[[index_name]] <- final_tab_latex
+# where "index_name" identifies the corresponding stock index.
+# After repeating this procedure for all nine stock indices,
+# "list_of_tabs" will contain nine elements, one for each index.
 ######################################################################
 
 load("data/results/all_indices_tau_0.025.RData")

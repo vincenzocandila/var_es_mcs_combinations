@@ -28,6 +28,12 @@ source("functions/main_functions.R")
 
 period_of_interest<-"2013-01/2022-06"
 
+###################################
+#### Set seed
+###################################
+
+set.seed(123)
+
 #####################################################################
 #### Load S&P 500 or Shanghai Composite or
 #### one of the other seven indices used in the paper:
@@ -206,6 +212,23 @@ df_l<-list()
 
 z_a<-qnorm(tau)
 
+# Numerical stability thresholds used to discard unreliable model estimates
+
+# Maximum acceptable Nyblom stability statistic
+NYBLOM_MAX <- 10
+
+# Maximum acceptable Hessian condition number
+KAPPA_MAX <- 1e6
+
+# Acceptable range for the Student-t degrees-of-freedom parameter
+SHAPE_MIN <- 2.05
+SHAPE_MAX <- 100
+
+# Number of random restarts used by the gosolnp optimizer
+GOSOLNP_RESTARTS <- 15
+
+
+
 filename<-"data/intermediary/sp500_tau_0.025_gen_files.RData" 
 
 ##################################################
@@ -215,7 +238,7 @@ filename<-"data/intermediary/sp500_tau_0.025_gen_files.RData"
 ##################################################
 
 
-for(tt in 1:nstep){ 
+for(tt in 1:nstep){  
 
 day_end_est<-tt+Tin
 
@@ -656,23 +679,8 @@ if (tt == 1) {
 
 m<-10
 
-repeat {
-rg_est_rvol_5_n<-NULL
-
-rg_est_rvol_5_n<-tryCatch(ugarchfit(data=r_t_est_cycle*100,
-spec=spec_re_garch_n,realizedVol=rvol_5_est_cycle*100,
-solver = 'hybrid', out.sample=lstep),
-
-error=function(e) return(NA)
-)
-
-if (all(!is.na(coef(rg_est_rvol_5_n)))){
-break
-}
-
-}
-
-
+rg_est_rvol_5_n<-fit_robust(r_t_est_cycle, rvol_5_est_cycle, 
+spec_re_garch_n, is_t = FALSE)$fit
 
 sigma_rg_n_rvol_5_in_s<-rg_est_rvol_5_n@fit$sigma/100
 sigma_rg_n_rvol_5_oos<-as.numeric(sigma(ugarchforecast(rg_est_rvol_5_n,  n.ahead = 1)))/100
@@ -751,27 +759,18 @@ if (tt == 1) {
 
 m<-12
 
-repeat {
-rg_est_rvol_5_t<-NULL
 
-rg_est_rvol_5_t<-tryCatch(ugarchfit(data=r_t_est_cycle,
-spec=spec_re_garch_t,realizedVol=rvol_5_est_cycle,
-solver = 'hybrid',out.sample=lstep),
-error=function(e) return(NA)
-)
-
-if (all(!is.na(coef(rg_est_rvol_5_t)))){
-break
-}
-
-}
+rg_est_rvol_5_t<-fit_robust(r_t_est_cycle, rvol_5_est_cycle, 
+spec_re_garch_t, is_t = TRUE)$fit
 
 
-sigma_rg_t_rvol_5_oos<-as.numeric(sigma(ugarchforecast(rg_est_rvol_5_t,  n.ahead = 1)))
 
-df_hat<-as.numeric(rg_est_rvol_5_t@fit$coef['shape'])
+sigma_rg_t_rvol_5_in_s <- rg_est_rvol_5_t@fit$sigma / 100
+sigma_rg_t_rvol_5_oos  <- as.numeric(sigma(ugarchforecast(rg_est_rvol_5_t, n.ahead = 1))) / 100
+df_hat <- as.numeric(rg_est_rvol_5_t@fit$coef['shape'])
+correc <- ((df_hat - 2) / df_hat)^0.5
 
-correc<-((df_hat-2)/df_hat)^0.5
+
 
 VaR_oos[tt,m]<-qt(tau,df_hat)*sigma_rg_t_rvol_5_oos*correc
 
@@ -816,24 +815,12 @@ if (tt == 1) {
 
 m<-13
 
-repeat {
-rg_est_rb_ss_n<-NULL
 
-rg_est_rb_ss_n<-tryCatch(ugarchfit(data=r_t_est_cycle,
-spec=spec_re_garch_n,realizedVol=rb_ss_est_cycle,
-solver = 'hybrid',out.sample=lstep),
-error=function(e) return(NA)
-)
-
-if (all(!is.na(coef(rg_est_rb_ss_n)))){
-break
-}
-
-}
+rg_est_rb_ss_n<-fit_robust(r_t_est_cycle, rb_ss_est_cycle, spec_re_garch_n, is_t = FALSE)$fit
 
 
-sigma_rg_n_rb_ss_in_s<-rg_est_rb_ss_n@fit$sigma
-sigma_rg_n_rb_ss_oos<-as.numeric(sigma(ugarchforecast(rg_est_rb_ss_n,  n.ahead = 1)))
+sigma_rg_n_rb_ss_in_s<-rg_est_rb_ss_n@fit$sigma/100
+sigma_rg_n_rb_ss_oos<-as.numeric(sigma(ugarchforecast(rg_est_rb_ss_n,  n.ahead = 1)))/100
 
 VaR_oos[tt,m]<-z_a*sigma_rg_n_rb_ss_oos
 ES_oos[tt,m]<- -sigma_rg_n_rb_ss_oos*dnorm(z_a)/tau
@@ -911,27 +898,14 @@ if (tt == 1) {
 
 m<-15
 
-repeat {
-rg_est_rb_ss_t<-NULL
 
-rg_est_rb_ss_t<-tryCatch(ugarchfit(data=r_t_est_cycle,
-spec=spec_re_garch_t,realizedVol=rb_ss_est_cycle,
-solver = 'hybrid',out.sample=lstep),
-error=function(e) return(NA)
-)
+rg_est_rb_ss_t<-fit_robust(r_t_est_cycle, rb_ss_est_cycle, spec_re_garch_t, is_t = TRUE)$fit
 
-if (all(!is.na(coef(rg_est_rb_ss_t)))){
-break
-}
+sigma_rg_t_rb_ss_in_s <- rg_est_rb_ss_t@fit$sigma / 100
+sigma_rg_t_rb_ss_oos  <- as.numeric(sigma(ugarchforecast(rg_est_rb_ss_t, n.ahead = 1))) / 100
+df_hat <- as.numeric(rg_est_rb_ss_t@fit$coef['shape'])
+correc <- ((df_hat - 2) / df_hat)^0.5
 
-}
-
-
-sigma_rg_t_rb_ss_oos<-as.numeric(sigma(ugarchforecast(rg_est_rb_ss_t,  n.ahead = 1)))
-
-df_hat<-as.numeric(rg_est_rb_ss_t@fit$coef['shape'])
-
-correc<-((df_hat-2)/df_hat)^0.5
 
 VaR_oos[tt,m]<-qt(tau,df_hat)*sigma_rg_t_rb_ss_oos*correc
 
@@ -967,9 +941,6 @@ if (tt == 1) {
       VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
       ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
     }
-  
-
-
 
 
 ############################################ 
@@ -978,25 +949,13 @@ if (tt == 1) {
 
 m<-16
 
-repeat {
-rg_est_rk_n<-NULL
 
-rg_est_rk_n<-tryCatch(ugarchfit(data=r_t_est_cycle,
-spec=spec_re_garch_n,realizedVol=rk_est_cycle,
-solver = 'hybrid',out.sample=lstep),
-error=function(e) return(NA)
-)
+rg_est_rk_n<-fit_robust(r_t_est_cycle, rk_est_cycle, spec_re_garch_n, is_t = FALSE)$fit
 
-if (all(!is.na(coef(rg_est_rk_n)))){
-break
-}
-
-}
+sigma_rg_n_rk_in_s <- rg_est_rk_n@fit$sigma / 100
+sigma_rg_n_rk_oos  <- as.numeric(sigma(ugarchforecast(rg_est_rk_n, n.ahead = 1))) / 100
 
 
-
-sigma_rg_n_rk_in_s<-rg_est_rk_n@fit$sigma
-sigma_rg_n_rk_oos<-as.numeric(sigma(ugarchforecast(rg_est_rk_n,  n.ahead = 1)))
 
 VaR_oos[tt,m]<-z_a*sigma_rg_n_rk_oos
 ES_oos[tt,m]<- -sigma_rg_n_rk_oos*dnorm(z_a)/tau
@@ -1076,29 +1035,12 @@ if (tt == 1) {
 
 m<-18
 
-repeat {
-rg_est_rk_t<-NULL
+rg_est_rk_t<-fit_robust(r_t_est_cycle, rk_est_cycle, spec_re_garch_t, is_t = TRUE)$fit
 
-rg_est_rk_t<-tryCatch(ugarchfit(data=r_t_est_cycle,
-spec=spec_re_garch_t,realizedVol=rk_est_cycle,
-solver = 'hybrid',out.sample=lstep),
-error=function(e) return(NA)
-)
-
-if (all(!is.na(coef(rg_est_rk_t)))){
-break
-}
-
-}
-
-
-sigma_rg_t_rk_oos<-as.numeric(sigma(ugarchforecast(rg_est_rk_t,  n.ahead = 1, 
-n.roll = c(lstep-1), 
-out.sample = c(lstep-1))))
-
-df_hat<-as.numeric(rg_est_rk_t@fit$coef['shape'])
-
-correc<-((df_hat-2)/df_hat)^0.5
+sigma_rg_t_rk_in_s <- rg_est_rk_t@fit$sigma / 100
+sigma_rg_t_rk_oos  <- as.numeric(sigma(ugarchforecast(rg_est_rk_t, n.ahead = 1))) / 100
+df_hat <- as.numeric(rg_est_rk_t@fit$coef['shape'])
+correc <- ((df_hat - 2) / df_hat)^0.5
 
 VaR_oos[tt,m]<-qt(tau,df_hat)*sigma_rg_t_rk_oos*correc
 
@@ -1444,30 +1386,51 @@ m<-26
 
 
 repeat {
-fit_ig_es<-NULL
 
-fit_ig_es<-tryCatch(
-ucaviarfit(model="IG", tau, daily_ret=r_t_in_s_tin_xts, 
-R = 1000, B=1, Exp_Short="Yes", std_err="not_boot"),
-error=function(e) return(NULL)
-)
+  fit_ig_es <- NULL
 
-if (!is.null(fit_ig_es$coef_mat) && all(!is.na(fit_ig_es$coef_mat[,1]))){
-break
+  fit_ig_es <- tryCatch(
+    ucaviarfit(
+      model = "IG",
+      tau,
+      daily_ret = r_t_in_s_tin_xts,
+      R = 1000,
+      B = 1,
+      Exp_Short = "Yes",
+      std_err = "not_boot"
+    ),
+    error = function(e) NULL
+  )
+
+  ## check 1
+  if (is.null(fit_ig_es$coef_mat) ||
+      any(is.na(fit_ig_es$coef_mat[,1]))) {
+    next
+  }
+
+  coef_ig <- fit_ig_es$coef_mat[,1]
+
+  ## check 2
+  radicand <-
+    coef_ig[1] +
+    coef_ig[2] * last(fit_ig_es$VaR)^2 +
+    coef_ig[3] * last(r_t_in_s_tin_xts)^2
+
+  ## outcome
+  if (!is.finite(radicand) || radicand < 0) {
+    next
+  }
+
+  ## result
+  fit_ig_es_VaR_oos <- -sqrt(radicand)
+
+  break
 }
-
-}
-
 
 
 coef_ig<-fit_ig_es$coef_mat[,1]
 
-fit_ig_es_VaR_oos<- as.numeric(
--c(
-coef_ig[1] + 
-coef_ig[2]*last(fit_ig_es$VaR)^2+
-coef_ig[3]*last(r_t_in_s_tin_xts)^2)^0.5
-)
+fit_ig_es_VaR_oos<- as.numeric(fit_ig_es_VaR_oos)
 
 fit_ig_es_ES_oos<- - abs((1+exp(coef_ig[4]))*fit_ig_es_VaR_oos)
 
@@ -1894,27 +1857,11 @@ file=filename)
 
 ############################################
 ############################################
-############################################ Cleaning data
+############################################ Final storing data
 ############################################
 ############################################
 
 r_t_oos<-coredata(r_t_oos_full)
-
-cleaned <- clean_function(
-  VaR_oos = VaR_oos,
-  ES_oos = ES_oos,
-  VaR_training_data_mod = VaR_training_data_mod,
-  ES_training_data_mod = ES_training_data_mod,
-  benchmark= "GJR-t",
-  multiplier = 1.5,
-  Tin = Tin,
-  nstep = nstep
-)
-
-VaR_oos<- cleaned$VaR_oos
-ES_oos<- cleaned$ES_oos
-VaR_training_data_mod<- cleaned$VaR_training_data_mod
-ES_training_data_mod<- cleaned$ES_training_data_mod
 
 save(
 Tin,
