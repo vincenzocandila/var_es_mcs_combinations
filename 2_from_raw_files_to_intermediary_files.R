@@ -178,6 +178,37 @@ colnames(VaR_oos)<-colnames(ES_oos)<-list_of_models
 r_t_in_s_matrix<-matrix(NA,nrow=Tin,ncol=nstep)
 dim(r_t_in_s_matrix)
 
+coef_sav_previous <- NULL
+VaR_SAV_in_s_previous <- NULL
+ES_SAV_in_s_previous <- NULL
+
+failed_SAV <- integer(0)
+
+coef_as_previous <- NULL
+VaR_AS_in_s_previous <- NULL
+ES_AS_in_s_previous <- NULL
+
+failed_AS <- integer(0)
+
+coef_ig_previous <- NULL
+VaR_IG_in_s_previous <- NULL
+ES_IG_in_s_previous <- NULL
+
+failed_IG <- integer(0)
+
+coef_sav_rvol_5_previous <- NULL
+VaR_SAVX_rvol_5_in_s_previous <- NULL
+ES_SAVX_rvol_5_in_s_previous <- NULL
+
+failed_SAVX_rvol_5 <- integer(0)
+
+coef_sav_rb_ss_previous <- NULL
+VaR_SAVX_rb_ss_in_s_previous <- NULL
+ES_SAVX_rb_ss_in_s_previous <- NULL
+
+failed_SAVX_rb_ss <- integer(0)
+
+
 ##################################################
 ################################################## MODEL specs
 ################################################## 
@@ -1252,411 +1283,1315 @@ if (tt == 1) {
 ################################################## Semi-Parametric methods
 ################################################## (from M24 to M32)
 
-
-############################################ 
+############################################
 ############################################ SAV
 ############################################ M24
 
-m<-24
+m <- 24
 
-repeat {
-fit_sav_es<-NULL
+############################################
+# Estimate the SAV model
+############################################
 
-fit_sav_es<-tryCatch(
-ucaviarfit(model="SAV", tau, daily_ret=r_t_in_s_tin_xts, 
-R = 1000, B=1, Exp_Short="Yes", std_err="not_boot"),
-error=function(e) return(NULL)
+fit_sav_es <- tryCatch(
+  ucaviarfit(
+    model = "SAV",
+    tau,
+    daily_ret = r_t_in_s_tin_xts,
+    R = 1000,
+    B = 1,
+    Exp_Short = "Yes",
+    std_err = "not_boot"
+  ),
+  error = function(e) NULL
 )
 
-if (!is.null(fit_sav_es$coef_mat) && all(!is.na(fit_sav_es$coef_mat[,1]))){
-break
-}
+############################################
+# Check whether the estimation is valid
+############################################
 
-}
-
-coef_sav<-fit_sav_es$coef_mat[,1]
-
-fit_sav_es_VaR_oos<-as.numeric(
-coef_sav[1] + coef_sav[2]*last(fit_sav_es$VaR)+
-coef_sav[3]*last(abs(r_t_in_s_tin_xts))
+valid_fit_sav <- (
+  !is.null(fit_sav_es) &&
+  !is.null(fit_sav_es$coef_mat) &&
+  NCOL(fit_sav_es$coef_mat) >= 1 &&
+  all(is.finite(fit_sav_es$coef_mat[, 1])) &&
+  !is.null(fit_sav_es$VaR) &&
+  !is.null(fit_sav_es$ES) &&
+  all(is.finite(fit_sav_es$VaR)) &&
+  all(is.finite(fit_sav_es$ES))
 )
 
-fit_sav_es_ES_oos<- - abs((1+exp(coef_sav[4]))*fit_sav_es_VaR_oos)
+if (valid_fit_sav) {
 
-VaR_oos[tt,m]<-fit_sav_es_VaR_oos
-ES_oos[tt,m]<-fit_sav_es_ES_oos
+  ##########################################
+  # Successful estimation
+  ##########################################
 
-VaR_SAV_in_s<-fit_sav_es$VaR
-ES_SAV_in_s<-fit_sav_es$ES
+  coef_sav <- fit_sav_es$coef_mat[, 1]
+
+  VaR_SAV_in_s <- fit_sav_es$VaR
+  ES_SAV_in_s  <- fit_sav_es$ES
+
+} else {
+
+  ##########################################
+  # Failed estimation:
+  # use the coefficients from the previous
+  # point and reconstruct the VaR and ES
+  # paths on the updated rolling window
+  ##########################################
+
+  if (
+    is.null(coef_sav_previous) ||
+    is.null(VaR_SAV_in_s_previous)
+  ) {
+    stop(
+      paste0(
+        "SAV estimation failed at tt = ",
+        tt,
+        " and no previous valid estimates are available."
+      )
+    )
+  }
+
+  failed_SAV <- c(failed_SAV, tt)
+
+  # Use the coefficients estimated at the previous point
+  coef_sav <- coef_sav_previous
+
+  # Current updated in-sample return window
+  r_sav_current <- as.numeric(r_t_in_s_tin_xts)
+  n_sav <- length(r_sav_current)
+
+  # Initialize the new in-sample VaR path
+  VaR_SAV_in_s <- rep(NA_real_, n_sav)
+
+  # The first observation of the updated rolling window
+  # corresponds to the second observation of the previous window
+  VaR_SAV_in_s[1] <- VaR_SAV_in_s_previous[2]
+
+  # Reconstruct the in-sample VaR path
+  for (i in 2:n_sav) {
+
+    VaR_SAV_in_s[i] <- as.numeric(
+      coef_sav[1] +
+      coef_sav[2] * VaR_SAV_in_s[i - 1] +
+      coef_sav[3] * abs(r_sav_current[i - 1])
+    )
+  }
+
+  # Reconstruct the corresponding in-sample ES path
+  ES_SAV_in_s <- -abs(
+    (1 + exp(coef_sav[4])) * VaR_SAV_in_s
+  )
+
+  warning(
+    paste0(
+      "SAV estimation failed at tt = ",
+      tt,
+      ". Previous coefficients were used."
+    ),
+    call. = FALSE
+  )
+}
+
+############################################
+# One-step-ahead VaR and ES forecasts
+############################################
+
+fit_sav_es_VaR_oos <- as.numeric(
+  coef_sav[1] +
+  coef_sav[2] * last(VaR_SAV_in_s) +
+  coef_sav[3] * last(abs(r_t_in_s_tin_xts))
+)
+
+fit_sav_es_ES_oos <- -abs(
+  (1 + exp(coef_sav[4])) * fit_sav_es_VaR_oos
+)
+
+VaR_oos[tt, m] <- fit_sav_es_VaR_oos
+ES_oos[tt, m]  <- fit_sav_es_ES_oos
+
+############################################
+# Construct the rolling training data
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_SAV_in_s
-      ES_training_data_mod[, m, tt] <- ES_SAV_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_SAV_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_SAV_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
+
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <- VaR_SAV_in_s
+  ES_training_data_mod[, m, tt]  <- ES_SAV_in_s
+
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, last out-of-sample
+  n_in  <- Tin - tt + 1
+  n_oos <- (n_in + 1):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_SAV_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_SAV_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1), m]
+}
+
+############################################
+# Store the current estimates for the
+# following rolling estimation point
+############################################
+
+coef_sav_previous <- coef_sav
+VaR_SAV_in_s_previous <- VaR_SAV_in_s
+ES_SAV_in_s_previous <- ES_SAV_in_s
 
 
-############################################ 
+############################################
 ############################################ AS
 ############################################ M25
 
-m<-25
+m <- 25
 
-repeat {
-fit_as_es<-NULL
+############################################
+# Estimate the AS model
+############################################
 
-fit_as_es<-tryCatch(
-ucaviarfit(model="AS", tau, daily_ret=r_t_in_s_tin_xts, 
-R = 1000, B=1, Exp_Short="Yes", std_err="not_boot"),
-error=function(e) return(NULL)
+fit_as_es <- tryCatch(
+  ucaviarfit(
+    model = "AS",
+    tau,
+    daily_ret = r_t_in_s_tin_xts,
+    R = 1000,
+    B = 1,
+    Exp_Short = "Yes",
+    std_err = "not_boot"
+  ),
+  error = function(e) NULL
 )
 
-if (!is.null(fit_as_es$coef_mat) && all(!is.na(fit_as_es$coef_mat[,1]))){
-break
-}
+############################################
+# Check whether the estimation is valid
+############################################
 
-}
-
-coef_as<-fit_as_es$coef_mat[,1]
-
-ret<-coredata(last(r_t_in_s_tin_xts))
-ind_pos<-ifelse(ret>0,1,0)
-ind_neg<-ifelse(ret<0,1,0)
-
-fit_as_es_VaR_oos<-as.numeric(
-coef_as[1] + 
-coef_as[2]*last(fit_as_es$VaR)+
-(coef_as[3]*ind_pos+coef_as[4]*ind_pos)*abs(ret)
+valid_fit_as <- (
+  !is.null(fit_as_es) &&
+  !is.null(fit_as_es$coef_mat) &&
+  NCOL(fit_as_es$coef_mat) >= 1 &&
+  all(is.finite(fit_as_es$coef_mat[, 1])) &&
+  !is.null(fit_as_es$VaR) &&
+  !is.null(fit_as_es$ES) &&
+  all(is.finite(fit_as_es$VaR)) &&
+  all(is.finite(fit_as_es$ES))
 )
 
-fit_as_es_ES_oos<- - abs((1+exp(coef_as[5]))*fit_as_es_VaR_oos)
+if (valid_fit_as) {
 
+  ##########################################
+  # Successful estimation
+  ##########################################
 
-VaR_oos[tt,m]<-fit_as_es_VaR_oos
-ES_oos[tt,m]<-fit_as_es_ES_oos
+  coef_as <- fit_as_es$coef_mat[, 1]
 
-VaR_AS_in_s<-fit_as_es$VaR
-ES_AS_in_s<-fit_as_es$ES
+  VaR_AS_in_s <- as.numeric(fit_as_es$VaR)
+  ES_AS_in_s  <- as.numeric(fit_as_es$ES)
+
+} else {
+
+  ##########################################
+  # Failed estimation:
+  # use the coefficients from the previous
+  # point and reconstruct the VaR and ES
+  # paths on the updated rolling window
+  ##########################################
+
+  if (
+    is.null(coef_as_previous) ||
+    is.null(VaR_AS_in_s_previous)
+  ) {
+    stop(
+      paste0(
+        "AS estimation failed at tt = ",
+        tt,
+        " and no previous valid estimates are available."
+      )
+    )
+  }
+
+  failed_AS <- c(failed_AS, tt)
+
+  # Use the coefficients estimated at the previous point
+  coef_as <- coef_as_previous
+
+  # Current updated in-sample return window
+  r_as_current <- as.numeric(r_t_in_s_tin_xts)
+  n_as <- length(r_as_current)
+
+  # Initialize the new in-sample VaR path
+  VaR_AS_in_s <- rep(NA_real_, n_as)
+
+  # The first observation of the updated rolling window
+  # corresponds to the second observation of the previous window
+  VaR_AS_in_s[1] <- VaR_AS_in_s_previous[2]
+
+  # Reconstruct the in-sample VaR path
+  for (i in 2:n_as) {
+
+    ret_previous <- r_as_current[i - 1]
+
+    ind_pos_previous <- ifelse(ret_previous > 0, 1, 0)
+    ind_neg_previous <- ifelse(ret_previous < 0, 1, 0)
+
+    VaR_AS_in_s[i] <- as.numeric(
+      coef_as[1] +
+      coef_as[2] * VaR_AS_in_s[i - 1] +
+      (
+        coef_as[3] * ind_pos_previous +
+        coef_as[4] * ind_neg_previous
+      ) * abs(ret_previous)
+    )
+  }
+
+  # Reconstruct the corresponding in-sample ES path
+  ES_AS_in_s <- -abs(
+    (1 + exp(coef_as[5])) * VaR_AS_in_s
+  )
+
+  warning(
+    paste0(
+      "AS estimation failed at tt = ",
+      tt,
+      ". Previous coefficients were used."
+    ),
+    call. = FALSE
+  )
+}
+
+############################################
+# One-step-ahead VaR and ES forecasts
+############################################
+
+ret <- as.numeric(last(r_t_in_s_tin_xts))
+
+ind_pos <- ifelse(ret > 0, 1, 0)
+ind_neg <- ifelse(ret < 0, 1, 0)
+
+fit_as_es_VaR_oos <- as.numeric(
+  coef_as[1] +
+  coef_as[2] * last(VaR_AS_in_s) +
+  (
+    coef_as[3] * ind_pos +
+    coef_as[4] * ind_neg
+  ) * abs(ret)
+)
+
+fit_as_es_ES_oos <- -abs(
+  (1 + exp(coef_as[5])) * fit_as_es_VaR_oos
+)
+
+VaR_oos[tt, m] <- fit_as_es_VaR_oos
+ES_oos[tt, m]  <- fit_as_es_ES_oos
+
+############################################
+# Construct the rolling training data
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_AS_in_s
-      ES_training_data_mod[, m, tt] <- ES_AS_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_AS_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_AS_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
+
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <- VaR_AS_in_s
+  ES_training_data_mod[, m, tt]  <- ES_AS_in_s
+
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, last out-of-sample
+  n_in  <- Tin - tt + 1
+  n_oos <- (n_in + 1):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_AS_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_AS_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1), m]
+}
+
+############################################
+# Store the current estimates for the
+# following rolling estimation point
+############################################
+
+coef_as_previous <- coef_as
+VaR_AS_in_s_previous <- VaR_AS_in_s
+ES_AS_in_s_previous <- ES_AS_in_s
 
 ############################################ 
 ############################################ Indirect GARCH
 ############################################ M26
 
-m<-26
+m <- 26
 
+############################################
+# Estimate the IG model
+############################################
 
-repeat {
+fit_ig_es <- tryCatch(
+  ucaviarfit(
+    model = "IG",
+    tau,
+    daily_ret = r_t_in_s_tin_xts,
+    R = 1000,
+    B = 1,
+    Exp_Short = "Yes",
+    std_err = "not_boot"
+  ),
+  error = function(e) NULL
+)
 
-  fit_ig_es <- NULL
+############################################
+# Check whether the estimation is valid
+############################################
 
-  fit_ig_es <- tryCatch(
-    ucaviarfit(
-      model = "IG",
-      tau,
-      daily_ret = r_t_in_s_tin_xts,
-      R = 1000,
-      B = 1,
-      Exp_Short = "Yes",
-      std_err = "not_boot"
-    ),
-    error = function(e) NULL
+valid_fit_ig <- (
+  !is.null(fit_ig_es) &&
+  !is.null(fit_ig_es$coef_mat) &&
+  NCOL(fit_ig_es$coef_mat) >= 1 &&
+  all(is.finite(fit_ig_es$coef_mat[, 1])) &&
+  !is.null(fit_ig_es$VaR) &&
+  !is.null(fit_ig_es$ES) &&
+  all(is.finite(fit_ig_es$VaR)) &&
+  all(is.finite(fit_ig_es$ES))
+)
+
+if (valid_fit_ig) {
+
+  coef_ig_candidate <- fit_ig_es$coef_mat[, 1]
+
+  ##########################################
+  # Check the one-step-ahead radicand
+  ##########################################
+
+  radicand_ig_oos <- as.numeric(
+    coef_ig_candidate[1] +
+    coef_ig_candidate[2] * last(fit_ig_es$VaR)^2 +
+    coef_ig_candidate[3] * last(r_t_in_s_tin_xts)^2
   )
 
-  ## check 1
-  if (is.null(fit_ig_es$coef_mat) ||
-      any(is.na(fit_ig_es$coef_mat[,1]))) {
-    next
-  }
-
-  coef_ig <- fit_ig_es$coef_mat[,1]
-
-  ## check 2
-  radicand <-
-    coef_ig[1] +
-    coef_ig[2] * last(fit_ig_es$VaR)^2 +
-    coef_ig[3] * last(r_t_in_s_tin_xts)^2
-
-  ## outcome
-  if (!is.finite(radicand) || radicand < 0) {
-    next
-  }
-
-  ## result
-  fit_ig_es_VaR_oos <- -sqrt(radicand)
-
-  break
+  valid_fit_ig <- (
+    length(radicand_ig_oos) == 1 &&
+    is.finite(radicand_ig_oos) &&
+    radicand_ig_oos >= 0
+  )
 }
 
+if (valid_fit_ig) {
 
-coef_ig<-fit_ig_es$coef_mat[,1]
+  ##########################################
+  # Successful estimation
+  ##########################################
 
-fit_ig_es_VaR_oos<- as.numeric(fit_ig_es_VaR_oos)
+  coef_ig <- coef_ig_candidate
 
-fit_ig_es_ES_oos<- - abs((1+exp(coef_ig[4]))*fit_ig_es_VaR_oos)
+  VaR_IG_in_s <- as.numeric(fit_ig_es$VaR)
+  ES_IG_in_s  <- as.numeric(fit_ig_es$ES)
 
+} else {
 
-VaR_oos[tt,m]<-fit_ig_es_VaR_oos
-ES_oos[tt,m]<-fit_ig_es_ES_oos
+  ##########################################
+  # Failed estimation or invalid forecast:
+  # use the coefficients from the previous
+  # point and reconstruct the VaR and ES
+  # paths on the updated rolling window
+  ##########################################
 
-VaR_IG_in_s<-fit_ig_es$VaR
-ES_IG_in_s<-fit_ig_es$ES
+  if (
+    is.null(coef_ig_previous) ||
+    is.null(VaR_IG_in_s_previous)
+  ) {
+    stop(
+      paste0(
+        "IG estimation failed at tt = ",
+        tt,
+        " and no previous valid estimates are available."
+      )
+    )
+  }
 
+  failed_IG <- c(failed_IG, tt)
+
+  # Use the coefficients from the previous point
+  coef_ig <- coef_ig_previous
+
+  # Current updated in-sample return window
+  r_ig_current <- as.numeric(r_t_in_s_tin_xts)
+  n_ig <- length(r_ig_current)
+
+  # Initialize the new in-sample VaR path
+  VaR_IG_in_s <- rep(NA_real_, n_ig)
+
+  # The first observation of the updated window corresponds
+  # to the second observation of the previous window
+  VaR_IG_in_s[1] <- VaR_IG_in_s_previous[2]
+
+  ##########################################
+  # Reconstruct the in-sample VaR path
+  ##########################################
+
+  for (i in 2:n_ig) {
+
+    radicand_ig_in_s <- as.numeric(
+      coef_ig[1] +
+      coef_ig[2] * VaR_IG_in_s[i - 1]^2 +
+      coef_ig[3] * r_ig_current[i - 1]^2
+    )
+
+    if (
+      length(radicand_ig_in_s) != 1 ||
+      !is.finite(radicand_ig_in_s) ||
+      radicand_ig_in_s < 0
+    ) {
+      stop(
+        paste0(
+          "Invalid IG in-sample radicand at tt = ",
+          tt,
+          ", position i = ",
+          i,
+          ", using the previous coefficients."
+        )
+      )
+    }
+
+    VaR_IG_in_s[i] <- -sqrt(radicand_ig_in_s)
+  }
+
+  # Reconstruct the corresponding in-sample ES path
+  ES_IG_in_s <- -abs(
+    (1 + exp(coef_ig[4])) * VaR_IG_in_s
+  )
+
+  warning(
+    paste0(
+      "IG estimation failed or produced an invalid forecast at tt = ",
+      tt,
+      ". Previous coefficients were used."
+    ),
+    call. = FALSE
+  )
+}
+
+############################################
+# One-step-ahead VaR and ES forecasts
+############################################
+
+radicand_ig_oos <- as.numeric(
+  coef_ig[1] +
+  coef_ig[2] * last(VaR_IG_in_s)^2 +
+  coef_ig[3] * last(r_t_in_s_tin_xts)^2
+)
+
+if (
+  length(radicand_ig_oos) != 1 ||
+  !is.finite(radicand_ig_oos) ||
+  radicand_ig_oos < 0
+) {
+  stop(
+    paste0(
+      "Invalid IG out-of-sample radicand at tt = ",
+      tt,
+      "."
+    )
+  )
+}
+
+fit_ig_es_VaR_oos <- as.numeric(
+  -sqrt(radicand_ig_oos)
+)
+
+fit_ig_es_ES_oos <- -abs(
+  (1 + exp(coef_ig[4])) * fit_ig_es_VaR_oos
+)
+
+VaR_oos[tt, m] <- fit_ig_es_VaR_oos
+ES_oos[tt, m]  <- fit_ig_es_ES_oos
+
+############################################
+# Construct the rolling training data
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_IG_in_s
-      ES_training_data_mod[, m, tt] <- ES_IG_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_IG_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_IG_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
-############################################ 
-############################################ SAV+RVOL 5 min
+
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <- VaR_IG_in_s
+  ES_training_data_mod[, m, tt]  <- ES_IG_in_s
+
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, last out-of-sample
+  n_in  <- Tin - tt + 1
+  n_oos <- (n_in + 1):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_IG_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_IG_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1), m]
+}
+
+############################################
+# Store the current estimates for the
+# following rolling estimation point
+############################################
+
+coef_ig_previous <- coef_ig
+VaR_IG_in_s_previous <- VaR_IG_in_s
+ES_IG_in_s_previous <- ES_IG_in_s
+ 
+############################################
+############################################ SAV-X: rvol_5
 ############################################ M27
 
-m<-27
+m <- 27
 
-repeat {
-fit_sav_es_rvol_5<-NULL
+############################################
+# Updated in-sample X window
+############################################
 
-fit_sav_es_rvol_5<-tryCatch(
-ucaviarfit(model="SAVX", tau, daily_ret=r_t_in_s_tin_xts,
-X=rvol_5_est_cycle[-(Tin+1)], 
-R = 1000, B=1, Exp_Short="Yes", std_err="not_boot"),
-error=function(e) return(NULL)
+X_sav_rvol_5_current <- as.numeric(
+  rvol_5_est_cycle[-(Tin + 1)]
 )
 
-if (!is.null(fit_sav_es_rvol_5$coef_mat) && all(!is.na(fit_sav_es_rvol_5$coef_mat[,1]))){
-break
-}
+############################################
+# Estimate the SAV-X model
+############################################
 
-}
-
-
-
-coef_sav_rvol_5<-fit_sav_es_rvol_5$coef_mat[,1]
-
-fit_sav_es_VaR_oos_rvol_5<-as.numeric(
-coef_sav_rvol_5[1] + 
-coef_sav_rvol_5[2]*last(fit_sav_es_rvol_5$VaR)+
-coef_sav_rvol_5[3]*last(rvol_5_est_cycle[-(Tin+1)])
+fit_sav_es_rvol_5 <- tryCatch(
+  ucaviarfit(
+    model = "SAVX",
+    tau,
+    daily_ret = r_t_in_s_tin_xts,
+    X = X_sav_rvol_5_current,
+    R = 1000,
+    B = 1,
+    Exp_Short = "Yes",
+    std_err = "not_boot"
+  ),
+  error = function(e) NULL
 )
 
-fit_sav_es_ES_oos_rvol_5<- - abs((1+exp(coef_sav_rvol_5[4]))*fit_sav_es_VaR_oos_rvol_5)
+############################################
+# Check whether the estimation is valid
+############################################
 
-VaR_oos[tt,m]<-fit_sav_es_VaR_oos_rvol_5
-ES_oos[tt,m]<-fit_sav_es_ES_oos_rvol_5
+valid_fit_sav_rvol_5 <- (
+  !is.null(fit_sav_es_rvol_5) &&
+  !is.null(fit_sav_es_rvol_5$coef_mat) &&
+  NCOL(fit_sav_es_rvol_5$coef_mat) >= 1 &&
+  all(is.finite(fit_sav_es_rvol_5$coef_mat[, 1])) &&
+  !is.null(fit_sav_es_rvol_5$VaR) &&
+  !is.null(fit_sav_es_rvol_5$ES) &&
+  all(is.finite(fit_sav_es_rvol_5$VaR)) &&
+  all(is.finite(fit_sav_es_rvol_5$ES))
+)
 
+if (valid_fit_sav_rvol_5) {
 
-VaR_SAVX_rvol_5_in_s<-fit_sav_es_rvol_5$VaR
-ES_SAVX_rvol_5_in_s<-fit_sav_es_rvol_5$ES
+  ##########################################
+  # Successful estimation
+  ##########################################
 
+  coef_sav_rvol_5 <-
+    fit_sav_es_rvol_5$coef_mat[, 1]
+
+  VaR_SAVX_rvol_5_in_s <-
+    as.numeric(fit_sav_es_rvol_5$VaR)
+
+  ES_SAVX_rvol_5_in_s <-
+    as.numeric(fit_sav_es_rvol_5$ES)
+
+} else {
+
+  ##########################################
+  # Failed estimation:
+  # use the coefficients from the previous
+  # point and reconstruct VaR and ES on the
+  # updated X window
+  ##########################################
+
+  if (
+    is.null(coef_sav_rvol_5_previous) ||
+    is.null(VaR_SAVX_rvol_5_in_s_previous)
+  ) {
+    stop(
+      paste0(
+        "SAV-X rvol_5 estimation failed at tt = ",
+        tt,
+        " and no previous valid estimates are available."
+      )
+    )
+  }
+
+  failed_SAVX_rvol_5 <-
+    c(failed_SAVX_rvol_5, tt)
+
+  # Use the coefficients estimated at the previous point
+  coef_sav_rvol_5 <-
+    coef_sav_rvol_5_previous
+
+  n_sav_rvol_5 <- length(X_sav_rvol_5_current)
+
+  if (n_sav_rvol_5 != length(r_t_in_s_tin_xts)) {
+    stop(
+      paste0(
+        "The lengths of X and daily_ret differ at tt = ",
+        tt,
+        "."
+      )
+    )
+  }
+
+  if (any(!is.finite(X_sav_rvol_5_current))) {
+    stop(
+      paste0(
+        "Non-finite values found in the SAV-X rvol_5 ",
+        "in-sample window at tt = ",
+        tt,
+        "."
+      )
+    )
+  }
+
+  # Initialize the new in-sample VaR path
+  VaR_SAVX_rvol_5_in_s <-
+    rep(NA_real_, n_sav_rvol_5)
+
+  # The first observation of the updated rolling window
+  # corresponds to the second observation of the previous window
+  VaR_SAVX_rvol_5_in_s[1] <-
+    VaR_SAVX_rvol_5_in_s_previous[2]
+
+  ##########################################
+  # Reconstruct the in-sample VaR path
+  ##########################################
+
+  for (i in 2:n_sav_rvol_5) {
+
+    VaR_SAVX_rvol_5_in_s[i] <- as.numeric(
+      coef_sav_rvol_5[1] +
+      coef_sav_rvol_5[2] *
+        VaR_SAVX_rvol_5_in_s[i - 1] +
+      coef_sav_rvol_5[3] *
+        X_sav_rvol_5_current[i - 1]
+    )
+  }
+
+  ##########################################
+  # Reconstruct the in-sample ES path
+  ##########################################
+
+  ES_SAVX_rvol_5_in_s <- -abs(
+    (1 + exp(coef_sav_rvol_5[4])) *
+      VaR_SAVX_rvol_5_in_s
+  )
+
+  warning(
+    paste0(
+      "SAV-X rvol_5 estimation failed at tt = ",
+      tt,
+      ". Previous coefficients were used."
+    ),
+    call. = FALSE
+  )
+}
+
+############################################
+# One-step-ahead VaR and ES forecasts
+############################################
+
+fit_sav_es_VaR_oos_rvol_5 <- as.numeric(
+  coef_sav_rvol_5[1] +
+  coef_sav_rvol_5[2] *
+    last(VaR_SAVX_rvol_5_in_s) +
+  coef_sav_rvol_5[3] *
+    last(X_sav_rvol_5_current)
+)
+
+fit_sav_es_ES_oos_rvol_5 <- -abs(
+  (1 + exp(coef_sav_rvol_5[4])) *
+    fit_sav_es_VaR_oos_rvol_5
+)
+
+VaR_oos[tt, m] <-
+  fit_sav_es_VaR_oos_rvol_5
+
+ES_oos[tt, m] <-
+  fit_sav_es_ES_oos_rvol_5
+
+############################################
+# Construct the rolling training data
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_SAVX_rvol_5_in_s
-      ES_training_data_mod[, m, tt] <- ES_SAVX_rvol_5_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_SAVX_rvol_5_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_SAVX_rvol_5_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
 
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_SAVX_rvol_5_in_s
 
+  ES_training_data_mod[, m, tt] <-
+    ES_SAVX_rvol_5_in_s
 
-############################################ 
-############################################ SAV+RB-SS
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, last out-of-sample
+  n_in  <- Tin - tt + 1
+  n_oos <- (n_in + 1):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_SAVX_rvol_5_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_SAVX_rvol_5_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1), m]
+}
+
+############################################
+# Store the current estimates for the
+# following rolling estimation point
+############################################
+
+coef_sav_rvol_5_previous <-
+  coef_sav_rvol_5
+
+VaR_SAVX_rvol_5_in_s_previous <-
+  VaR_SAVX_rvol_5_in_s
+
+ES_SAVX_rvol_5_in_s_previous <-
+  ES_SAVX_rvol_5_in_s
+
+############################################
+############################################ SAV-X: rb_ss
 ############################################ M28
 
-m<-28
+m <- 28
 
-repeat {
-fit_sav_es_rb_ss<-NULL
+############################################
+# Updated in-sample X window
+############################################
 
-fit_sav_es_rb_ss<-tryCatch(
-ucaviarfit(model="SAVX", tau, daily_ret=r_t_in_s_tin_xts,
-X=rb_ss_est_cycle[-(Tin+1)], 
-R = 1000, B=1, Exp_Short="Yes", std_err="not_boot"),
-error=function(e) return(NULL)
+X_sav_rb_ss_current <- as.numeric(
+  rb_ss_est_cycle[-(Tin + 1)]
 )
 
-if (!is.null(fit_sav_es_rb_ss$coef_mat) && all(!is.na(fit_sav_es_rb_ss$coef_mat[,1]))){
-break
-}
+############################################
+# Estimate the SAV-X model
+############################################
 
-}
-
-
-coef_sav_rb_ss<-fit_sav_es_rb_ss$coef_mat[,1]
-
-fit_sav_es_VaR_oos_rb_ss<-as.numeric(
-coef_sav_rb_ss[1] + 
-coef_sav_rb_ss[2]*last(fit_sav_es_rb_ss$VaR)+
-coef_sav_rb_ss[3]*last(rb_ss_est_cycle[-(Tin+1)])
+fit_sav_es_rb_ss <- tryCatch(
+  ucaviarfit(
+    model = "SAVX",
+    tau,
+    daily_ret = r_t_in_s_tin_xts,
+    X = X_sav_rb_ss_current,
+    R = 1000,
+    B = 1,
+    Exp_Short = "Yes",
+    std_err = "not_boot"
+  ),
+  error = function(e) NULL
 )
 
-fit_sav_es_ES_oos_rb_ss<- - abs((1+exp(coef_sav_rb_ss[4]))*fit_sav_es_VaR_oos_rb_ss)
+############################################
+# Check whether the estimation is valid
+############################################
 
-VaR_oos[tt,m]<-fit_sav_es_VaR_oos_rb_ss
-ES_oos[tt,m]<-fit_sav_es_ES_oos_rb_ss
+valid_fit_sav_rb_ss <- (
+  !is.null(fit_sav_es_rb_ss) &&
+  !is.null(fit_sav_es_rb_ss$coef_mat) &&
+  NCOL(fit_sav_es_rb_ss$coef_mat) >= 1 &&
+  all(is.finite(fit_sav_es_rb_ss$coef_mat[, 1])) &&
+  !is.null(fit_sav_es_rb_ss$VaR) &&
+  !is.null(fit_sav_es_rb_ss$ES) &&
+  all(is.finite(fit_sav_es_rb_ss$VaR)) &&
+  all(is.finite(fit_sav_es_rb_ss$ES))
+)
 
+if (valid_fit_sav_rb_ss) {
 
-VaR_SAVX_rb_ss_in_s<-fit_sav_es_rb_ss$VaR
-ES_SAVX_rb_ss_in_s<-fit_sav_es_rb_ss$ES
+  ##########################################
+  # Successful estimation
+  ##########################################
+
+  coef_sav_rb_ss <-
+    fit_sav_es_rb_ss$coef_mat[, 1]
+
+  VaR_SAVX_rb_ss_in_s <-
+    as.numeric(fit_sav_es_rb_ss$VaR)
+
+  ES_SAVX_rb_ss_in_s <-
+    as.numeric(fit_sav_es_rb_ss$ES)
+
+} else {
+
+  ##########################################
+  # Failed estimation:
+  # use the coefficients from the previous
+  # point and reconstruct VaR and ES on the
+  # updated X window
+  ##########################################
+
+  if (
+    is.null(coef_sav_rb_ss_previous) ||
+    is.null(VaR_SAVX_rb_ss_in_s_previous)
+  ) {
+    stop(
+      paste0(
+        "SAV-X rb_ss estimation failed at tt = ",
+        tt,
+        " and no previous valid estimates are available."
+      )
+    )
+  }
+
+  failed_SAVX_rb_ss <-
+    c(failed_SAVX_rb_ss, tt)
+
+  # Use the coefficients estimated at the previous point
+  coef_sav_rb_ss <-
+    coef_sav_rb_ss_previous
+
+  n_sav_rb_ss <- length(X_sav_rb_ss_current)
+
+  if (n_sav_rb_ss != length(r_t_in_s_tin_xts)) {
+    stop(
+      paste0(
+        "The lengths of X and daily_ret differ at tt = ",
+        tt,
+        "."
+      )
+    )
+  }
+
+  if (any(!is.finite(X_sav_rb_ss_current))) {
+    stop(
+      paste0(
+        "Non-finite values found in the SAV-X rb_ss ",
+        "in-sample window at tt = ",
+        tt,
+        "."
+      )
+    )
+  }
+
+  # Initialize the new in-sample VaR path
+  VaR_SAVX_rb_ss_in_s <-
+    rep(NA_real_, n_sav_rb_ss)
+
+  # The first observation of the updated rolling window
+  # corresponds to the second observation of the previous window
+  VaR_SAVX_rb_ss_in_s[1] <-
+    VaR_SAVX_rb_ss_in_s_previous[2]
+
+  ##########################################
+  # Reconstruct the in-sample VaR path
+  ##########################################
+
+  for (i in 2:n_sav_rb_ss) {
+
+    VaR_SAVX_rb_ss_in_s[i] <- as.numeric(
+      coef_sav_rb_ss[1] +
+      coef_sav_rb_ss[2] *
+        VaR_SAVX_rb_ss_in_s[i - 1] +
+      coef_sav_rb_ss[3] *
+        X_sav_rb_ss_current[i - 1]
+    )
+  }
+
+  ##########################################
+  # Reconstruct the in-sample ES path
+  ##########################################
+
+  ES_SAVX_rb_ss_in_s <- -abs(
+    (1 + exp(coef_sav_rb_ss[4])) *
+      VaR_SAVX_rb_ss_in_s
+  )
+
+  warning(
+    paste0(
+      "SAV-X rb_ss estimation failed at tt = ",
+      tt,
+      ". Previous coefficients were used."
+    ),
+    call. = FALSE
+  )
+}
+
+############################################
+# One-step-ahead VaR and ES forecasts
+############################################
+
+fit_sav_es_VaR_oos_rb_ss <- as.numeric(
+  coef_sav_rb_ss[1] +
+  coef_sav_rb_ss[2] *
+    last(VaR_SAVX_rb_ss_in_s) +
+  coef_sav_rb_ss[3] *
+    last(X_sav_rb_ss_current)
+)
+
+fit_sav_es_ES_oos_rb_ss <- -abs(
+  (1 + exp(coef_sav_rb_ss[4])) *
+    fit_sav_es_VaR_oos_rb_ss
+)
+
+VaR_oos[tt, m] <-
+  fit_sav_es_VaR_oos_rb_ss
+
+ES_oos[tt, m] <-
+  fit_sav_es_ES_oos_rb_ss
+
+############################################
+# Construct the rolling training data
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_SAVX_rb_ss_in_s
-      ES_training_data_mod[, m, tt] <- ES_SAVX_rb_ss_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_SAVX_rb_ss_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_SAVX_rb_ss_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
 
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_SAVX_rb_ss_in_s
+
+  ES_training_data_mod[, m, tt] <-
+    ES_SAVX_rb_ss_in_s
+
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, last out-of-sample
+  n_in  <- Tin - tt + 1
+  n_oos <- (n_in + 1):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_SAVX_rb_ss_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_SAVX_rb_ss_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1), m]
+}
+
+############################################
+# Store the current estimates for the
+# following rolling estimation point
+############################################
+
+coef_sav_rb_ss_previous <-
+  coef_sav_rb_ss
+
+VaR_SAVX_rb_ss_in_s_previous <-
+  VaR_SAVX_rb_ss_in_s
+
+ES_SAVX_rb_ss_in_s_previous <-
+  ES_SAVX_rb_ss_in_s
 
 ############################################ 
 ############################################ SAV+RK
 ############################################ M29
 
-m<-29
+m <- 29
 
+############################################
+# Updated in-sample X window
+############################################
 
-repeat {
-fit_sav_es_rk<-NULL
-
-fit_sav_es_rk<-tryCatch(
-ucaviarfit(model="SAVX", tau, daily_ret=r_t_in_s_tin_xts,
-X=rk_est_cycle[-(Tin+1)], 
-R = 1000, B=1, Exp_Short="Yes", std_err="not_boot"),
-error=function(e) return(NULL)
+X_sav_rk_current <- as.numeric(
+  rk_est_cycle[-(Tin + 1)]
 )
 
-if (!is.null(fit_sav_es_rk$coef_mat) && all(!is.na(fit_sav_es_rk$coef_mat[,1]))){
-break
-}
+############################################
+# Estimate the SAV-X model
+############################################
 
-}
-
-
-coef_sav_rk<-fit_sav_es_rk$coef_mat[,1]
-
-fit_sav_es_VaR_oos_rk<-as.numeric(
-coef_sav_rk[1] + 
-coef_sav_rk[2]*last(fit_sav_es_rk$VaR)+
-coef_sav_rk[3]*last(rk_est_cycle[-(Tin+1)])
+fit_sav_es_rk <- tryCatch(
+  ucaviarfit(
+    model = "SAVX",
+    tau,
+    daily_ret = r_t_in_s_tin_xts,
+    X = X_sav_rk_current,
+    R = 1000,
+    B = 1,
+    Exp_Short = "Yes",
+    std_err = "not_boot"
+  ),
+  error = function(e) NULL
 )
 
-fit_sav_es_ES_oos_rk <- - abs((1+exp(coef_sav_rk[4]))*fit_sav_es_VaR_oos_rk)
+############################################
+# Check whether the estimation is valid
+############################################
 
-VaR_oos[tt,m]<-fit_sav_es_VaR_oos_rk
-ES_oos[tt,m]<-fit_sav_es_ES_oos_rk
+valid_fit_sav_rk <- (
+  !is.null(fit_sav_es_rk) &&
+  !is.null(fit_sav_es_rk$coef_mat) &&
+  NCOL(fit_sav_es_rk$coef_mat) >= 1 &&
+  all(is.finite(fit_sav_es_rk$coef_mat[, 1])) &&
+  !is.null(fit_sav_es_rk$VaR) &&
+  !is.null(fit_sav_es_rk$ES) &&
+  all(is.finite(fit_sav_es_rk$VaR)) &&
+  all(is.finite(fit_sav_es_rk$ES))
+)
 
+if (valid_fit_sav_rk) {
 
-VaR_SAVX_rk_in_s<-fit_sav_es_rk$VaR
-ES_SAVX_rk_in_s<-fit_sav_es_rk$ES
+  ##########################################
+  # Successful estimation
+  ##########################################
+
+  coef_sav_rk <-
+    fit_sav_es_rk$coef_mat[, 1]
+
+  VaR_SAVX_rk_in_s <-
+    as.numeric(fit_sav_es_rk$VaR)
+
+  ES_SAVX_rk_in_s <-
+    as.numeric(fit_sav_es_rk$ES)
+
+} else {
+
+  ##########################################
+  # Failed estimation:
+  # use the coefficients from the previous
+  # point and reconstruct VaR and ES on the
+  # updated X window
+  ##########################################
+
+  if (
+    is.null(coef_sav_rk_previous) ||
+    is.null(VaR_SAVX_rk_in_s_previous)
+  ) {
+    stop(
+      paste0(
+        "SAV-X rk estimation failed at tt = ",
+        tt,
+        " and no previous valid estimates are available."
+      )
+    )
+  }
+
+  failed_SAVX_rk <-
+    c(failed_SAVX_rk, tt)
+
+  # Use the coefficients estimated at the previous point
+  coef_sav_rk <-
+    coef_sav_rk_previous
+
+  n_sav_rk <- length(X_sav_rk_current)
+
+  if (n_sav_rk != length(r_t_in_s_tin_xts)) {
+    stop(
+      paste0(
+        "The lengths of X and daily_ret differ at tt = ",
+        tt,
+        "."
+      )
+    )
+  }
+
+  if (any(!is.finite(X_sav_rk_current))) {
+    stop(
+      paste0(
+        "Non-finite values found in the SAV-X rk ",
+        "in-sample window at tt = ",
+        tt,
+        "."
+      )
+    )
+  }
+
+  # Initialize the new in-sample VaR path
+  VaR_SAVX_rk_in_s <-
+    rep(NA_real_, n_sav_rk)
+
+  # The first observation of the updated rolling window
+  # corresponds to the second observation of the previous window
+  VaR_SAVX_rk_in_s[1] <-
+    VaR_SAVX_rk_in_s_previous[2]
+
+  ##########################################
+  # Reconstruct the in-sample VaR path
+  ##########################################
+
+  for (i in 2:n_sav_rk) {
+
+    VaR_SAVX_rk_in_s[i] <- as.numeric(
+      coef_sav_rk[1] +
+      coef_sav_rk[2] *
+        VaR_SAVX_rk_in_s[i - 1] +
+      coef_sav_rk[3] *
+        X_sav_rk_current[i - 1]
+    )
+  }
+
+  ##########################################
+  # Reconstruct the in-sample ES path
+  ##########################################
+
+  ES_SAVX_rk_in_s <- -abs(
+    (1 + exp(coef_sav_rk[4])) *
+      VaR_SAVX_rk_in_s
+  )
+
+  warning(
+    paste0(
+      "SAV-X rk estimation failed at tt = ",
+      tt,
+      ". Previous coefficients were used."
+    ),
+    call. = FALSE
+  )
+}
+
+############################################
+# One-step-ahead VaR and ES forecasts
+############################################
+
+fit_sav_es_VaR_oos_rk <- as.numeric(
+  coef_sav_rk[1] +
+  coef_sav_rk[2] *
+    last(VaR_SAVX_rk_in_s) +
+  coef_sav_rk[3] *
+    last(X_sav_rk_current)
+)
+
+fit_sav_es_ES_oos_rk <- -abs(
+  (1 + exp(coef_sav_rk[4])) *
+    fit_sav_es_VaR_oos_rk
+)
+
+VaR_oos[tt, m] <-
+  fit_sav_es_VaR_oos_rk
+
+ES_oos[tt, m] <-
+  fit_sav_es_ES_oos_rk
+
+############################################
+# Construct the rolling training data
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_SAVX_rk_in_s
-      ES_training_data_mod[, m, tt] <- ES_SAVX_rk_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_SAVX_rk_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_SAVX_rk_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
+
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_SAVX_rk_in_s
+
+  ES_training_data_mod[, m, tt] <-
+    ES_SAVX_rk_in_s
+
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, last out-of-sample
+  n_in  <- Tin - tt + 1
+  n_oos <- (n_in + 1):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_SAVX_rk_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_SAVX_rk_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1), m]
+}
+
+############################################
+# Store the current estimates for the
+# following rolling estimation point
+############################################
+
+coef_sav_rk_previous <-
+  coef_sav_rk
+
+VaR_SAVX_rk_in_s_previous <-
+  VaR_SAVX_rk_in_s
+
+ES_SAVX_rk_in_s_previous <-
+  ES_SAVX_rk_in_s
 
 ############################################ 
 ############################################ MF-QR-X (EPU+RVOL 5 min)
