@@ -208,6 +208,11 @@ ES_SAVX_rb_ss_in_s_previous <- NULL
 
 failed_SAVX_rb_ss <- integer(0)
 
+coef_sav_rk_previous <- NULL
+VaR_SAVX_rk_in_s_previous <- NULL
+ES_SAVX_rk_in_s_previous <- NULL
+
+failed_SAVX_rk<- integer(0)
 
 ##################################################
 ################################################## MODEL specs
