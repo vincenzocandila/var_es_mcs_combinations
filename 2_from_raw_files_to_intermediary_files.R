@@ -79,6 +79,10 @@ tau	<-	0.025	# Coverage level
 
 K	<-	36 		# Number of lagged realizations entering the long-run equation
 
+################################################## CHANGE HERE the filename to correctly store the data
+
+filename<-"data/intermediary/sp500_tau_0.025_gen_files.RData" 
+
 ##################################################
 ################################################## OOS settings
 ##################################################
@@ -214,6 +218,9 @@ ES_SAVX_rk_in_s_previous <- NULL
 
 failed_SAVX_rk<- integer(0)
 
+q_hat_vec <- rep(NA_integer_, nstep)
+q_hat_vec[1] <- 1
+
 ##################################################
 ################################################## MODEL specs
 ################################################## 
@@ -262,10 +269,6 @@ SHAPE_MAX <- 100
 
 # Number of random restarts used by the gosolnp optimizer
 GOSOLNP_RESTARTS <- 15
-
-
-
-filename<-"data/intermediary/sp500_tau_0.025_gen_files.RData" 
 
 ##################################################
 ##################################################
@@ -347,8 +350,6 @@ if (tt == 1) {
       ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
     }
   
-
-
 ############################################ 
 ############################################ RISKMETRICS (NORMAL + cf)
 ############################################ M2
@@ -386,6 +387,7 @@ if (tt == 1) {
       ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
     }
   
+
 ############################################ 
 ############################################ RISKMETRICS (Student-t)
 ############################################ M3
@@ -438,8 +440,6 @@ if (tt == 1) {
       ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
     }
   
-
-
 
 ############################################ 
 ############################################ GARCH(1,1) with a normal distribution
@@ -1113,6 +1113,9 @@ if (tt == 1) {
       ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
     }
   
+
+message("Completed parametric models (18/32) for tt: ", tt, " out of ", nstep)
+
 
 ##################################################
 ################################################## Non-Parametric methods
@@ -2604,111 +2607,463 @@ ES_SAVX_rk_in_s_previous <-
 
 m<-30
 
-Q_linear_arch<-seq_test(r_t_est_cycle,tau)
-Q_linear_arch<-round(Q_linear_arch[[1]],3)
+############################################
+# Select the lag of the three MF-QR-X models
+############################################
 
-q_hat<-which(Q_linear_arch>0.05)[1]
+Q_linear_arch <- seq_test(r_t_est_cycle, tau)
+Q_linear_arch <- round(Q_linear_arch[[1]], 3)
 
-q_hat<-ifelse(q_hat<4|q_hat>9,4,q_hat)
+q_hat_new <- which(Q_linear_arch > 0.05)[1]
 
-repeat {
-fit_mfx_es_rvol_5<-NULL
+# Save the lag selected at the current step
+if (!is.na(q_hat_new)) {
 
-fit_mfx_es_rvol_5<-tryCatch(
-uqfit(model="lARCHMIDASX", tau, daily_ret=r_t_est_cycle,q=q_hat,
-Exp_Short="Yes",B=1,K=K,mv_m=epu_mv_cycle,X=rvol_5_est_cycle,
-out_of_sample=lstep),
-error=function(e) return(NULL)
+  q_hat_vec[tt] <- q_hat_new
+
+} else if (tt > 1) {
+
+  # If no lag is selected, use the lag from the previous step
+  q_hat_vec[tt] <- q_hat_vec[tt - 1]
+}
+
+# If no lag is selected at tt = 1,
+# q_hat_vec[1] remains equal to 1
+
+# Use the same initial lag for all three MF-QR-X models 
+
+lag_current <- q_hat_vec[tt]
+
+############################################
+# Estimate the MF-QR-X model
+############################################
+
+fit_mfx_es_rvol_5 <- tryCatch(
+  uqfit(
+    model = "lARCHMIDASX",
+    tau,
+    daily_ret = r_t_est_cycle,
+    q = lag_current,
+    Exp_Short = "Yes",
+    B = 1,
+    K = K,
+    mv_m = epu_mv_cycle,
+    X = rvol_5_est_cycle,
+    out_of_sample = lstep
+  ),
+  error = function(e) NULL
 )
 
-if (!is.null(fit_mfx_es_rvol_5$coef_mat) && all(!is.na(fit_mfx_es_rvol_5$coef_mat[,1]))){
-break
+# Retain the first fitted object
+fit_mfx_es_rvol_5_first <- fit_mfx_es_rvol_5
+
+
+############################################
+# Check whether the estimation is valid
+############################################
+
+valid_fit_mf_rvol <- (
+  !is.null(fit_mfx_es_rvol_5) &&
+  !is.null(fit_mfx_es_rvol_5$VaR_oos) &&
+  !is.null(fit_mfx_es_rvol_5$ES_oos) &&
+  length(fit_mfx_es_rvol_5$VaR_oos) == 1L &&
+  length(fit_mfx_es_rvol_5$ES_oos) == 1L &&
+  is.finite(as.numeric(fit_mfx_es_rvol_5$VaR_oos)) &&
+  is.finite(as.numeric(fit_mfx_es_rvol_5$ES_oos)) &&
+  as.numeric(fit_mfx_es_rvol_5$VaR_oos) < 0
+)
+
+
+############################################
+# Retry using the lag from the previous step
+############################################
+
+if (!valid_fit_mf_rvol) {
+
+  # At the first step, use lag 1 as the fallback value
+  if (tt == 1) {
+
+    lag_retry <- 1L
+
+  } else {
+
+    lag_retry <- q_hat_vec[tt - 1]
+  }
+
+  fit_mfx_es_rvol_5 <- tryCatch(
+    uqfit(
+      model = "lARCHMIDASX",
+      tau,
+      daily_ret = r_t_est_cycle,
+      q = lag_retry,
+      Exp_Short = "Yes",
+      B = 1,
+      K = K,
+      mv_m = epu_mv_cycle,
+      X = rvol_5_est_cycle,
+      out_of_sample = lstep
+    ),
+    error = function(e) NULL
+  )
+
+  valid_fit_mf_rvol <- (
+    !is.null(fit_mfx_es_rvol_5) &&
+    !is.null(fit_mfx_es_rvol_5$VaR_oos) &&
+    !is.null(fit_mfx_es_rvol_5$ES_oos) &&
+    length(fit_mfx_es_rvol_5$VaR_oos) == 1L &&
+    length(fit_mfx_es_rvol_5$ES_oos) == 1L &&
+    is.finite(as.numeric(fit_mfx_es_rvol_5$VaR_oos)) &&
+    is.finite(as.numeric(fit_mfx_es_rvol_5$ES_oos)) &&
+    as.numeric(fit_mfx_es_rvol_5$VaR_oos) < 0
+  )
+
+  # If the second estimation returns NULL,
+  # retain the first fitted object for the in-sample estimates
+  if (is.null(fit_mfx_es_rvol_5)) {
+    fit_mfx_es_rvol_5 <- fit_mfx_es_rvol_5_first
+  }
 }
 
+
+############################################
+# Save the out-of-sample forecasts
+############################################
+
+if (valid_fit_mf_rvol) {
+
+  # Successful estimation
+  VaR_oos[tt, m] <- as.numeric(fit_mfx_es_rvol_5$VaR_oos)
+  ES_oos[tt, m]  <- as.numeric(fit_mfx_es_rvol_5$ES_oos)
+
+} else if (tt > 1) {
+
+  # If the second estimation also fails,
+  # use the forecasts from the previous step
+  VaR_oos[tt, m] <- VaR_oos[tt - 1, m]
+  ES_oos[tt, m]  <- ES_oos[tt - 1, m]
+
+} else {
+
+  stop(
+    "The MF-QR-X model with realized volatility failed at the first step."
+  )
 }
 
-VaR_oos[tt,m]<-fit_mfx_es_rvol_5$VaR_oos
-ES_oos[tt,m]<-fit_mfx_es_rvol_5$ES_oos
 
-VaR_MFX_rvol_5_in_s<-fit_mfx_es_rvol_5$VaR
-ES_MFX_rvol_5_in_s<-fit_mfx_es_rvol_5$ES
+############################################
+# Extract the in-sample VaR and ES
+############################################
 
+if (
+  is.null(fit_mfx_es_rvol_5) ||
+  is.null(fit_mfx_es_rvol_5$VaR) ||
+  is.null(fit_mfx_es_rvol_5$ES)
+) {
+  stop(
+    "The in-sample estimates of the MF-QR-X model with realized volatility are not available."
+  )
+}
+
+VaR_MFX_rvol_5_in_s <- as.numeric(fit_mfx_es_rvol_5$VaR)
+ES_MFX_rvol_5_in_s  <- as.numeric(fit_mfx_es_rvol_5$ES)
+
+
+############################################
+# Check the in-sample VaR and ES
+############################################
+
+# Identify observations for which either VaR or ES is positive
+positive_in_sample <- which(
+  VaR_MFX_rvol_5_in_s > 0 |
+  ES_MFX_rvol_5_in_s > 0
+)
+
+if (length(positive_in_sample) > 0) {
+
+  # Use unchanged copies to compute the adjacent-value means
+  VaR_in_sample_original <- VaR_MFX_rvol_5_in_s
+  ES_in_sample_original  <- ES_MFX_rvol_5_in_s
+
+  for (i in positive_in_sample) {
+
+    adjacent_indices <- c(i - 1L, i + 1L)
+
+    # Keep only indices within the in-sample vectors
+    adjacent_indices <- adjacent_indices[
+      adjacent_indices >= 1L &
+      adjacent_indices <= length(VaR_MFX_rvol_5_in_s)
+    ]
+
+    VaR_MFX_rvol_5_in_s[i] <- mean(
+      VaR_in_sample_original[adjacent_indices],
+      na.rm = TRUE
+    )
+
+    ES_MFX_rvol_5_in_s[i] <- mean(
+      ES_in_sample_original[adjacent_indices],
+      na.rm = TRUE
+    )
+  }
+}
+
+
+############################################
+# Update the rolling training sample
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_MFX_rvol_5_in_s
-      ES_training_data_mod[, m, tt] <- ES_MFX_rvol_5_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_MFX_rvol_5_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_MFX_rvol_5_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
+
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <- VaR_MFX_rvol_5_in_s
+  ES_training_data_mod[, m, tt]  <- ES_MFX_rvol_5_in_s
+
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, then out-of-sample observations
+  n_in  <- Tin - tt + 1L
+  n_oos <- (n_in + 1L):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_MFX_rvol_5_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1L), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_MFX_rvol_5_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1L), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1L), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1L), m]
+}
+
+
+
+
 ############################################ 
 ############################################ MF-QR-X (EPU+RB-SS)
 ############################################ M31
 
 m<-31
 
-repeat {
-fit_mfx_es_rb_ss<-NULL
+############################################
+# Estimate the MF-QR-X model
+############################################
 
-fit_mfx_es_rb_ss<-tryCatch(
-uqfit(model="lARCHMIDASX", tau, daily_ret=r_t_est_cycle,q=q_hat,
-Exp_Short="Yes",B=1,K=K,mv_m=epu_mv_cycle,X=rb_ss_est_cycle,
-out_of_sample=lstep),
-error=function(e) return(NULL)
+fit_mfx_es_rb_ss <- tryCatch(
+  uqfit(
+    model = "lARCHMIDASX",
+    tau,
+    daily_ret = r_t_est_cycle,
+    q = lag_current,
+    Exp_Short = "Yes",
+    B = 1,
+    K = K,
+    mv_m = epu_mv_cycle,
+    X = rb_ss_est_cycle,
+    out_of_sample = lstep
+  ),
+  error = function(e) NULL
 )
 
-if (!is.null(fit_mfx_es_rb_ss$coef_mat) && all(!is.na(fit_mfx_es_rb_ss$coef_mat[,1]))){
-break
+# Retain the first fitted object
+fit_mfx_es_rb_ss_first <- fit_mfx_es_rb_ss
+
+
+############################################
+# Check whether the estimation is valid
+############################################
+
+valid_fit_mf_rb_ss <- (
+  !is.null(fit_mfx_es_rb_ss) &&
+  !is.null(fit_mfx_es_rb_ss$VaR_oos) &&
+  !is.null(fit_mfx_es_rb_ss$ES_oos) &&
+  length(fit_mfx_es_rb_ss$VaR_oos) == 1L &&
+  length(fit_mfx_es_rb_ss$ES_oos) == 1L &&
+  is.finite(as.numeric(fit_mfx_es_rb_ss$VaR_oos)) &&
+  is.finite(as.numeric(fit_mfx_es_rb_ss$ES_oos)) &&
+  as.numeric(fit_mfx_es_rb_ss$VaR_oos) < 0
+)
+
+
+############################################
+# Retry using the lag from the previous step
+############################################
+
+if (!valid_fit_mf_rb_ss) {
+
+  # At the first step, use lag 1 as the fallback value
+  if (tt == 1) {
+
+    lag_retry <- 1L
+
+  } else {
+
+    lag_retry <- q_hat_vec[tt - 1]
+  }
+
+  fit_mfx_es_rb_ss <- tryCatch(
+    uqfit(
+      model = "lARCHMIDASX",
+      tau,
+      daily_ret = r_t_est_cycle,
+      q = lag_retry,
+      Exp_Short = "Yes",
+      B = 1,
+      K = K,
+      mv_m = epu_mv_cycle,
+      X = rb_ss_est_cycle,
+      out_of_sample = lstep
+    ),
+    error = function(e) NULL
+  )
+
+  valid_fit_mf_rb_ss <- (
+    !is.null(fit_mfx_es_rb_ss) &&
+    !is.null(fit_mfx_es_rb_ss$VaR_oos) &&
+    !is.null(fit_mfx_es_rb_ss$ES_oos) &&
+    length(fit_mfx_es_rb_ss$VaR_oos) == 1L &&
+    length(fit_mfx_es_rb_ss$ES_oos) == 1L &&
+    is.finite(as.numeric(fit_mfx_es_rb_ss$VaR_oos)) &&
+    is.finite(as.numeric(fit_mfx_es_rb_ss$ES_oos)) &&
+    as.numeric(fit_mfx_es_rb_ss$VaR_oos) < 0
+  )
+
+  # If the second estimation returns NULL,
+  # retain the first fitted object for the in-sample estimates
+  if (is.null(fit_mfx_es_rb_ss)) {
+    fit_mfx_es_rb_ss <- fit_mfx_es_rb_ss_first
+  }
 }
 
+
+############################################
+# Save the out-of-sample forecasts
+############################################
+
+if (valid_fit_mf_rb_ss) {
+
+  # Successful estimation
+  VaR_oos[tt, m] <- as.numeric(fit_mfx_es_rb_ss$VaR_oos)
+  ES_oos[tt, m]  <- as.numeric(fit_mfx_es_rb_ss$ES_oos)
+
+} else if (tt > 1) {
+
+  # If the second estimation also fails,
+  # use the forecasts from the previous step
+  VaR_oos[tt, m] <- VaR_oos[tt - 1, m]
+  ES_oos[tt, m]  <- ES_oos[tt - 1, m]
+
+} else {
+
+  stop(
+    "The MF-QR-X model with RB-SS failed at the first step."
+  )
 }
 
-VaR_oos[tt,m]<-fit_mfx_es_rb_ss$VaR_oos
-ES_oos[tt,m]<-fit_mfx_es_rb_ss$ES_oos
 
-VaR_MFX_rb_ss_in_s<-fit_mfx_es_rb_ss$VaR
-ES_MFX_rb_ss_in_s<-fit_mfx_es_rb_ss$ES
+############################################
+# Extract the in-sample VaR and ES
+############################################
 
+if (
+  is.null(fit_mfx_es_rb_ss) ||
+  is.null(fit_mfx_es_rb_ss$VaR) ||
+  is.null(fit_mfx_es_rb_ss$ES)
+) {
+  stop(
+    "The in-sample estimates of the MF-QR-X model with RB-SS are not available."
+  )
+}
+
+VaR_MFX_rb_ss_in_s <- as.numeric(fit_mfx_es_rb_ss$VaR)
+ES_MFX_rb_ss_in_s  <- as.numeric(fit_mfx_es_rb_ss$ES)
+
+
+############################################
+# Check the in-sample VaR and ES
+############################################
+
+# Identify observations for which either VaR or ES is positive
+positive_in_sample <- which(
+  VaR_MFX_rb_ss_in_s > 0 |
+  ES_MFX_rb_ss_in_s > 0
+)
+
+if (length(positive_in_sample) > 0) {
+
+  # Use unchanged copies to compute the adjacent-value means
+  VaR_in_sample_original <- VaR_MFX_rb_ss_in_s
+  ES_in_sample_original  <- ES_MFX_rb_ss_in_s
+
+  for (i in positive_in_sample) {
+
+    adjacent_indices <- c(i - 1L, i + 1L)
+
+    # Keep only indices within the in-sample vectors
+    adjacent_indices <- adjacent_indices[
+      adjacent_indices >= 1L &
+      adjacent_indices <= length(VaR_MFX_rb_ss_in_s)
+    ]
+
+    VaR_MFX_rb_ss_in_s[i] <- mean(
+      VaR_in_sample_original[adjacent_indices],
+      na.rm = TRUE
+    )
+
+    ES_MFX_rb_ss_in_s[i] <- mean(
+      ES_in_sample_original[adjacent_indices],
+      na.rm = TRUE
+    )
+  }
+}
+
+
+############################################
+# Update the rolling training sample
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_MFX_rb_ss_in_s
-      ES_training_data_mod[, m, tt] <- ES_MFX_rb_ss_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_MFX_rb_ss_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_MFX_rb_ss_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
 
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <- VaR_MFX_rb_ss_in_s
+  ES_training_data_mod[, m, tt]  <- ES_MFX_rb_ss_in_s
 
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, then out-of-sample observations
+  n_in  <- Tin - tt + 1L
+  n_oos <- (n_in + 1L):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_MFX_rb_ss_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1L), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_MFX_rb_ss_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1L), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1L), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1L), m]
+}
 
 ############################################ 
 ############################################ MF-QR-X (EPU+RK)
@@ -2716,50 +3071,219 @@ if (tt == 1) {
 
 m<-32
 
-repeat {
-fit_mfx_es_rk<-NULL
+############################################
+# Estimate the MF-QR-X model
+############################################
 
-fit_mfx_es_rk<-tryCatch(
-uqfit(model="lARCHMIDASX", tau, daily_ret=r_t_est_cycle,q=q_hat,
-Exp_Short="Yes",B=1,K=K,mv_m=epu_mv_cycle,X=rk_est_cycle,
-out_of_sample=lstep),
-error=function(e) return(NULL)
+fit_mfx_es_rk <- tryCatch(
+  uqfit(
+    model = "lARCHMIDASX",
+    tau,
+    daily_ret = r_t_est_cycle,
+    q = lag_current,
+    Exp_Short = "Yes",
+    B = 1,
+    K = K,
+    mv_m = epu_mv_cycle,
+    X = rk_est_cycle,
+    out_of_sample = lstep
+  ),
+  error = function(e) NULL
 )
 
-if (!is.null(fit_mfx_es_rk$coef_mat) && all(!is.na(fit_mfx_es_rk$coef_mat[,1]))){
-break
+# Retain the first fitted object
+fit_mfx_es_rk_first <- fit_mfx_es_rk
+
+
+############################################
+# Check whether the estimation is valid
+############################################
+
+valid_fit_mf_rk <- (
+  !is.null(fit_mfx_es_rk) &&
+  !is.null(fit_mfx_es_rk$VaR_oos) &&
+  !is.null(fit_mfx_es_rk$ES_oos) &&
+  length(fit_mfx_es_rk$VaR_oos) == 1L &&
+  length(fit_mfx_es_rk$ES_oos) == 1L &&
+  is.finite(as.numeric(fit_mfx_es_rk$VaR_oos)) &&
+  is.finite(as.numeric(fit_mfx_es_rk$ES_oos)) &&
+  as.numeric(fit_mfx_es_rk$VaR_oos) < 0
+)
+
+
+############################################
+# Retry using the lag from the previous step
+############################################
+
+if (!valid_fit_mf_rk) {
+
+  # At the first step, use lag 1 as the fallback value
+  if (tt == 1) {
+
+    lag_retry <- 1L
+
+  } else {
+
+    lag_retry <- q_hat_vec[tt - 1]
+  }
+
+  fit_mfx_es_rk <- tryCatch(
+    uqfit(
+      model = "lARCHMIDASX",
+      tau,
+      daily_ret = r_t_est_cycle,
+      q = lag_retry,
+      Exp_Short = "Yes",
+      B = 1,
+      K = K,
+      mv_m = epu_mv_cycle,
+      X = rk_est_cycle,
+      out_of_sample = lstep
+    ),
+    error = function(e) NULL
+  )
+
+  valid_fit_mf_rk <- (
+    !is.null(fit_mfx_es_rk) &&
+    !is.null(fit_mfx_es_rk$VaR_oos) &&
+    !is.null(fit_mfx_es_rk$ES_oos) &&
+    length(fit_mfx_es_rk$VaR_oos) == 1L &&
+    length(fit_mfx_es_rk$ES_oos) == 1L &&
+    is.finite(as.numeric(fit_mfx_es_rk$VaR_oos)) &&
+    is.finite(as.numeric(fit_mfx_es_rk$ES_oos)) &&
+    as.numeric(fit_mfx_es_rk$VaR_oos) < 0
+  )
+
+  # If the second estimation returns NULL,
+  # retain the first fitted object for the in-sample estimates
+  if (is.null(fit_mfx_es_rk)) {
+    fit_mfx_es_rk <- fit_mfx_es_rk_first
+  }
 }
 
+
+############################################
+# Save the out-of-sample forecasts
+############################################
+
+if (valid_fit_mf_rk) {
+
+  # Successful estimation
+  VaR_oos[tt, m] <- as.numeric(fit_mfx_es_rk$VaR_oos)
+  ES_oos[tt, m]  <- as.numeric(fit_mfx_es_rk$ES_oos)
+
+} else if (tt > 1) {
+
+  # If the second estimation also fails,
+  # use the forecasts from the previous step
+  VaR_oos[tt, m] <- VaR_oos[tt - 1, m]
+  ES_oos[tt, m]  <- ES_oos[tt - 1, m]
+
+} else {
+
+  stop(
+    "The MF-QR-X model with realized kernel failed at the first step."
+  )
 }
 
-VaR_oos[tt,m]<-fit_mfx_es_rk$VaR_oos
-ES_oos[tt,m]<-fit_mfx_es_rk$ES_oos
 
-VaR_MFX_rk_in_s<-fit_mfx_es_rk$VaR
-ES_MFX_rk_in_s<-fit_mfx_es_rk$ES
+############################################
+# Extract the in-sample VaR and ES
+############################################
+
+if (
+  is.null(fit_mfx_es_rk) ||
+  is.null(fit_mfx_es_rk$VaR) ||
+  is.null(fit_mfx_es_rk$ES)
+) {
+  stop(
+    "The in-sample estimates of the MF-QR-X model with realized kernel are not available."
+  )
+}
+
+VaR_MFX_rk_in_s <- as.numeric(fit_mfx_es_rk$VaR)
+ES_MFX_rk_in_s  <- as.numeric(fit_mfx_es_rk$ES)
+
+
+############################################
+# Check the in-sample VaR and ES
+############################################
+
+# Identify observations for which either VaR or ES is positive
+positive_in_sample <- which(
+  VaR_MFX_rk_in_s > 0 |
+  ES_MFX_rk_in_s > 0
+)
+
+if (length(positive_in_sample) > 0) {
+
+  # Use unchanged copies to compute the adjacent-value means
+  VaR_in_sample_original <- VaR_MFX_rk_in_s
+  ES_in_sample_original  <- ES_MFX_rk_in_s
+
+  for (i in positive_in_sample) {
+
+    adjacent_indices <- c(i - 1L, i + 1L)
+
+    # Keep only indices within the in-sample vectors
+    adjacent_indices <- adjacent_indices[
+      adjacent_indices >= 1L &
+      adjacent_indices <= length(VaR_MFX_rk_in_s)
+    ]
+
+    VaR_MFX_rk_in_s[i] <- mean(
+      VaR_in_sample_original[adjacent_indices],
+      na.rm = TRUE
+    )
+
+    ES_MFX_rk_in_s[i] <- mean(
+      ES_in_sample_original[adjacent_indices],
+      na.rm = TRUE
+    )
+  }
+}
+
+
+############################################
+# Update the rolling training sample
+############################################
 
 if (tt == 1) {
-      # first step, only in-sample
-      VaR_training_data_mod[, m, tt] <- VaR_MFX_rk_in_s
-      ES_training_data_mod[, m, tt] <- ES_MFX_rk_in_s
-      
-    } else if (tt <= Tin) {
-      # Mixed window: first in-sample, last oos
-      n_in <- Tin - tt + 1
-      n_oos <- (n_in+1):Tin
-      
-      VaR_training_data_mod[1:n_in, m, tt] <- VaR_MFX_rk_in_s[1:n_in]
-      VaR_training_data_mod[n_oos, m, tt] <- VaR_oos[1:(tt-1), m]
-      
-      ES_training_data_mod[1:n_in, m, tt] <- ES_MFX_rk_in_s[1:n_in]
-      ES_training_data_mod[n_oos, m, tt] <- ES_oos[1:(tt-1), m]
-      
-    } else {
-      # Only oos 
-      VaR_training_data_mod[, m, tt] <- VaR_oos[(tt - Tin):(tt-1), m]
-      ES_training_data_mod[, m, tt] <- ES_oos[(tt - Tin):(tt-1), m]
-    }
-  
+
+  # First step: only in-sample observations
+  VaR_training_data_mod[, m, tt] <- VaR_MFX_rk_in_s
+  ES_training_data_mod[, m, tt]  <- ES_MFX_rk_in_s
+
+} else if (tt <= Tin) {
+
+  # Mixed window: first in-sample, then out-of-sample observations
+  n_in  <- Tin - tt + 1L
+  n_oos <- (n_in + 1L):Tin
+
+  VaR_training_data_mod[1:n_in, m, tt] <-
+    VaR_MFX_rk_in_s[1:n_in]
+
+  VaR_training_data_mod[n_oos, m, tt] <-
+    VaR_oos[1:(tt - 1L), m]
+
+  ES_training_data_mod[1:n_in, m, tt] <-
+    ES_MFX_rk_in_s[1:n_in]
+
+  ES_training_data_mod[n_oos, m, tt] <-
+    ES_oos[1:(tt - 1L), m]
+
+} else {
+
+  # Only out-of-sample observations
+  VaR_training_data_mod[, m, tt] <-
+    VaR_oos[(tt - Tin):(tt - 1L), m]
+
+  ES_training_data_mod[, m, tt] <-
+    ES_oos[(tt - Tin):(tt - 1L), m]
+}
+
+message("Completed all models (32/32) for tt: ", tt, " out of ", nstep)
+
 
 ############################################
 ############################################
@@ -2769,7 +3293,7 @@ if (tt == 1) {
 
 
 ## 
-if (tt %% 10 == 0) message("tt: ", tt, " out of ", nstep)
+#if (tt %% 10 == 0) message("tt: ", tt, " out of ", nstep)
 
 
 if (tt %% 50 == 0| tt == nstep){
@@ -2802,6 +3326,7 @@ file=filename)
 ############################################
 
 r_t_oos<-coredata(r_t_oos_full)
+
 
 save(
 Tin,
