@@ -2032,7 +2032,7 @@ sd_est<-(diag((N_est^0.5*A_T_hat%^%(-1/2)*D_T_hat))^-1)
 
 mat_boot_results<-matrix(rep(NA),nrow=B,ncol=N_coef)
 
-pb <- utils::txtProgressBar(0, B, style = 3)
+#pb <- utils::txtProgressBar(0, B, style = 3)
 
 for(b in 1:B){
 
@@ -2211,11 +2211,11 @@ method="NM"))
 
 mat_boot_results[b,]<-stats::coef(est_boot)
 
-utils::setTxtProgressBar(pb, b)
+#utils::setTxtProgressBar(pb, b)
 }  
 
 Sys.sleep(1)
-close(pb)
+#close(pb)
 
 ## compute the standard errors 
 
@@ -3166,7 +3166,7 @@ rownames(mat_coef)<-names(stats::coef(res))
 
 mat_boot_results<-matrix(rep(NA),nrow=B,ncol=N_coef)
 
-pb <- utils::txtProgressBar(0, B, style = 3)
+# pb <- utils::txtProgressBar(0, B, style = 3)
 
 for(b in 1:B){
 
@@ -4011,11 +4011,11 @@ method="BFGS")
 
 mat_boot_results[b,]<-stats::coef(res_boot)
 
-utils::setTxtProgressBar(pb, b)
+#utils::setTxtProgressBar(pb, b)
 }  # end B
 
 Sys.sleep(1)
-close(pb)
+#close(pb)
 
 ## compute the standard errors 
 
