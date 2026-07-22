@@ -4313,3 +4313,158 @@ fit_robust <- function(r_data, realized_measure, spec_base, is_t = FALSE) {
 }
 
 
+################################## Training Data Check Function
+
+###############################################################################################
+# Checks the VaR training data for positive values and replaces each invalid value using the
+# average of the nearest valid VaR observations located to its left and right.
+#
+# The corresponding ES value is replaced using the ES observations at the same neighboring
+# positions. If only one valid neighbor is available, that value is used. If no valid neighbor
+# is available, both VaR and ES are replaced with NA.
+#
+# Input  : three-dimensional VaR and ES training-data arrays with dimensions Tin x M x nstep
+# Output : list containing the corrected VaR and ES training-data arrays
+###############################################################################################
+
+check_function <- function(VaR_training_data_mod,
+                           ES_training_data_mod) {
+
+  # Preliminary checks
+  if (!is.array(VaR_training_data_mod) ||
+      length(dim(VaR_training_data_mod)) != 3L) {
+    stop("VaR_training_data_mod must be a three-dimensional array.")
+  }
+
+  if (!is.array(ES_training_data_mod) ||
+      length(dim(ES_training_data_mod)) != 3L) {
+    stop("ES_training_data_mod must be a three-dimensional array.")
+  }
+
+  if (!identical(dim(VaR_training_data_mod),
+                 dim(ES_training_data_mod))) {
+    stop(
+      paste(
+        "VaR_training_data_mod and ES_training_data_mod",
+        "must have the same dimensions."
+      )
+    )
+  }
+
+  # Extract array dimensions
+  Tin   <- dim(VaR_training_data_mod)[1L]
+  M     <- dim(VaR_training_data_mod)[2L]
+  nstep <- dim(VaR_training_data_mod)[3L]
+
+  # Loop over models
+  for (m in seq_len(M)) {
+
+    # Loop over out-of-sample steps
+    for (tt in seq_len(nstep)) {
+
+      # Identify positive VaR values
+      i_pos <- which(
+        is.finite(VaR_training_data_mod[, m, tt]) &
+          VaR_training_data_mod[, m, tt] > 0
+      )
+
+      # Move to the next step if no positive VaR values are found
+      if (!length(i_pos)) next
+
+      # Replace each positive VaR value
+      for (i in i_pos) {
+
+        # Search for the nearest valid VaR value on the left
+        i_left <- i - 1L
+
+        while (
+          i_left >= 1L &&
+          (
+            !is.finite(VaR_training_data_mod[i_left, m, tt]) ||
+            VaR_training_data_mod[i_left, m, tt] > 0
+          )
+        ) {
+          i_left <- i_left - 1L
+        }
+
+        if (i_left < 1L) {
+          i_left <- NA_integer_
+        }
+
+        # Search for the nearest valid VaR value on the right
+        i_right <- i + 1L
+
+        while (
+          i_right <= Tin &&
+          (
+            !is.finite(VaR_training_data_mod[i_right, m, tt]) ||
+            VaR_training_data_mod[i_right, m, tt] > 0
+          )
+        ) {
+          i_right <- i_right + 1L
+        }
+
+        if (i_right > Tin) {
+          i_right <- NA_integer_
+        }
+
+        # Collect the nearest valid VaR values
+        vals_var <- c(
+          if (!is.na(i_left)) {
+            VaR_training_data_mod[i_left, m, tt]
+          } else {
+            NA_real_
+          },
+          if (!is.na(i_right)) {
+            VaR_training_data_mod[i_right, m, tt]
+          } else {
+            NA_real_
+          }
+        )
+
+        # Collect the corresponding ES values
+        vals_es <- c(
+          if (!is.na(i_left)) {
+            ES_training_data_mod[i_left, m, tt]
+          } else {
+            NA_real_
+          },
+          if (!is.na(i_right)) {
+            ES_training_data_mod[i_right, m, tt]
+          } else {
+            NA_real_
+          }
+        )
+
+        # Replace the positive VaR using the available neighboring values
+        to_replace_VaR <- if (all(is.na(vals_var))) {
+          NA_real_
+        } else {
+          mean(vals_var, na.rm = TRUE)
+        }
+
+        # Replace the corresponding ES using the same neighboring positions
+        to_replace_ES <- if (all(is.na(vals_es))) {
+          NA_real_
+        } else {
+          mean(vals_es, na.rm = TRUE)
+        }
+
+        VaR_training_data_mod[i, m, tt] <- to_replace_VaR
+        ES_training_data_mod[i, m, tt]  <- to_replace_ES
+      }
+    }
+  }
+
+  # Return the corrected arrays
+  return(
+    list(
+      VaR_training_data_mod = VaR_training_data_mod,
+      ES_training_data_mod  = ES_training_data_mod
+    )
+  )
+}
+
+
+
+
