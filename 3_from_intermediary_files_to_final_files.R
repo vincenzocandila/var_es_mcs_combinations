@@ -49,6 +49,12 @@ source('functions/main_functions.R')
 
 load("data/intermediary/sp500_tau_0.025_files.RData")  
 
+### check if everything is ok
+res<-check_function(VaR_training_data_mod,ES_training_data_mod)
+
+VaR_training_data_mod <- res$VaR_training_data_mod
+ES_training_data_mod <- res$ES_training_data_mod
+
 #####################################################################################
 #### Variables stored in sp500_tau_0.025_files and shanghai_comp_tau_0.025_files:
 ##   Tin					 : length of the training period
@@ -69,7 +75,7 @@ load("data/intermediary/sp500_tau_0.025_files.RData")
 filename <- "data/results/sp500_partial_results.RData" # or "data/results/shanghai_comp_partial_results.RData"
 
 #####################################################################################
-# 4. Set parameters for MCS and forecast combination methods
+# 3. Set parameters for MCS and forecast combination methods
 #####################################################################################
 
 ### Significance level for MCS tests
@@ -90,7 +96,7 @@ set.seed(123)
 
 
 #####################################################################################
-# 5. Initialize output objects
+# 4. Initialize output objects
 #####################################################################################
 
 ### Vectors of length nstep to store VaR and ES forecasts from the six combination methods
@@ -130,7 +136,7 @@ Backtesting_pvalues<- array(NA,dim=c(N_model,6,nstep))
 
 
 #####################################################################################
-# 6. Main loop: compute backtesting pvalues, MCS and forecast combinations at each step 
+# 5. Main loop: compute backtesting pvalues, MCS and forecast combinations at each step 
 #####################################################################################
 
 for (tt in 1:nstep) { 
@@ -147,11 +153,6 @@ for (tt in 1:nstep) {
   
   colnames(db_loss_training) <- list_of_models
   
-  # Replace any NA values in the loss matrix with column means
-  db_loss_training <- apply(db_loss_training, 2, function(col) {
-    ifelse(is.na(col), mean(col, na.rm = TRUE), col)
-  })
-
   # store daily-log returns, VaR and ES for the analysis
   r_s   <- r_t_in_s_matrix[, tt]
   VaR_s <- VaR_training_data_mod[, , tt]   # VaR_training_data_mod  #VaR_in_s_array
@@ -454,7 +455,7 @@ for (i in seq_len(N_model)) {
   
   
   #####################################################################################
-  # 7. Save all results to file at each step (allows recovery if the loop is interrupted)
+  # 6. Save all results to file at each step (allows recovery if the loop is interrupted)
   #####################################################################################
   
   save(
@@ -480,7 +481,7 @@ for (i in seq_len(N_model)) {
 
 
 #####################################################################################
-# 8. Relative Score Combining (Taylor, 2020) - Benchmark 3
+# 7. Relative Score Combining (Taylor, 2020) - Benchmark 3
 #####################################################################################
 
 source('functions/rsc_main.R')
@@ -490,7 +491,7 @@ RS_Comb_ES<-ces_rc_store
 
 
 #####################################################################################
-# 9. Minimum Score Combining (Taylor, 2020) - Benchmark 4
+# 8. Minimum Score Combining (Taylor, 2020) - Benchmark 4
 #####################################################################################
 
 source('functions/msc_main.R')
@@ -500,7 +501,7 @@ MS_Comb_ES<-ces_mc_store
 
 
 #####################################################################################
-# 10. Store all the VaR and ES into VaR_oos_ev and ES_oos_ev objects
+# 9. Store all the VaR and ES into VaR_oos_ev and ES_oos_ev objects
 #####################################################################################
 
 VaR_oos_ev<-cbind(
@@ -554,7 +555,7 @@ coredata(VaR_oos_ev[,i]),coredata(ES_oos_ev[,i]),tau)
 }
 
 #####################################################################################
-# 11. Save all the results
+# 10. Save all the results
 #####################################################################################
 
 r_t_oos_full_plot<-r_t_oos_full
