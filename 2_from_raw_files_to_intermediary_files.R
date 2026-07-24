@@ -1782,8 +1782,7 @@ if (valid_fit_ig) {
 
     if (
       length(radicand_ig_in_s) != 1 ||
-      !is.finite(radicand_ig_in_s) ||
-      radicand_ig_in_s < 0
+      !is.finite(radicand_ig_in_s)
     ) {
       stop(
         paste0(
@@ -1796,10 +1795,56 @@ if (valid_fit_ig) {
       )
     }
 
-    VaR_IG_in_s[i] <- -sqrt(radicand_ig_in_s)
+    if (radicand_ig_in_s >= 0) {
+
+      # Valid radicand: update the IG VaR recursively
+      VaR_IG_in_s[i] <- -sqrt(radicand_ig_in_s)
+
+    } else {
+
+      ########################################
+      # Negative radicand: use the average of
+      # the SAV and AS in-sample VaR values
+      ########################################
+
+      fallback_ig <- c(
+        VaR_SAV_in_s[i],
+        VaR_AS_in_s[i]
+      )
+
+      if (!any(is.finite(fallback_ig))) {
+        stop(
+          paste0(
+            "Negative IG in-sample radicand at tt = ",
+            tt,
+            ", position i = ",
+            i,
+            ", and no valid SAV or AS VaR is available."
+          )
+        )
+      }
+
+      VaR_IG_in_s[i] <- mean(
+        fallback_ig[is.finite(fallback_ig)]
+      )
+
+      warning(
+        paste0(
+          "Negative IG in-sample radicand at tt = ",
+          tt,
+          ", position i = ",
+          i,
+          ". The average of the available SAV and AS VaR values was used."
+        ),
+        call. = FALSE
+      )
+    }
   }
 
-  # Reconstruct the corresponding in-sample ES path
+  ##########################################
+  # Reconstruct the corresponding ES path
+  ##########################################
+
   ES_IG_in_s <- -abs(
     (1 + exp(coef_ig[4])) * VaR_IG_in_s
   )
@@ -1818,6 +1863,10 @@ if (valid_fit_ig) {
 # One-step-ahead VaR and ES forecasts
 ############################################
 
+############################################
+# One-step-ahead VaR and ES forecasts
+############################################
+
 radicand_ig_oos <- as.numeric(
   coef_ig[1] +
   coef_ig[2] * last(VaR_IG_in_s)^2 +
@@ -1825,22 +1874,53 @@ radicand_ig_oos <- as.numeric(
 )
 
 if (
-  length(radicand_ig_oos) != 1 ||
-  !is.finite(radicand_ig_oos) ||
-  radicand_ig_oos < 0
+  length(radicand_ig_oos) == 1L &&
+  is.finite(radicand_ig_oos) &&
+  radicand_ig_oos >= 0
 ) {
-  stop(
-    paste0(
-      "Invalid IG out-of-sample radicand at tt = ",
-      tt,
-      "."
+
+  # Valid radicand: compute the IG VaR forecast
+  fit_ig_es_VaR_oos <- as.numeric(
+    -sqrt(radicand_ig_oos)
+  )
+
+} else {
+
+  ##########################################
+  # Invalid or negative radicand: use the
+  # average of SAV and AS VaR forecasts
+  ##########################################
+
+  fallback_ig_oos <- c(
+    fit_sav_es_VaR_oos,
+    fit_as_es_VaR_oos
+  )
+
+  fallback_ig_oos <- fallback_ig_oos[
+    is.finite(fallback_ig_oos)
+  ]
+
+  if (length(fallback_ig_oos) > 0L) {
+
+    fit_ig_es_VaR_oos <- mean(
+      fallback_ig_oos
     )
+
+  } else {
+
+    # Final fallback: use the previous IG VaR forecast
+    fit_ig_es_VaR_oos <- VaR_oos[tt - 1L, m]
+  }
+
+  warning(
+    paste0(
+      "Invalid or negative IG out-of-sample radicand at tt = ",
+      tt,
+      ". A fallback VaR forecast was used."
+    ),
+    call. = FALSE
   )
 }
-
-fit_ig_es_VaR_oos <- as.numeric(
-  -sqrt(radicand_ig_oos)
-)
 
 fit_ig_es_ES_oos <- -abs(
   (1 + exp(coef_ig[4])) * fit_ig_es_VaR_oos
@@ -1848,6 +1928,8 @@ fit_ig_es_ES_oos <- -abs(
 
 VaR_oos[tt, m] <- fit_ig_es_VaR_oos
 ES_oos[tt, m]  <- fit_ig_es_ES_oos
+
+
 
 ############################################
 # Construct the rolling training data
@@ -1895,7 +1977,8 @@ if (tt == 1) {
 coef_ig_previous <- coef_ig
 VaR_IG_in_s_previous <- VaR_IG_in_s
 ES_IG_in_s_previous <- ES_IG_in_s
- 
+
+
 ############################################
 ############################################ SAV-X: rvol_5
 ############################################ M27
