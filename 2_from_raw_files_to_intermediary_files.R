@@ -1690,7 +1690,7 @@ fit_ig_es <- tryCatch(
 valid_fit_ig <- (
   !is.null(fit_ig_es) &&
   !is.null(fit_ig_es$coef_mat) &&
-  NCOL(fit_ig_es$coef_mat) >= 1 &&
+  NCOL(fit_ig_es$coef_mat) >= 1L &&
   all(is.finite(fit_ig_es$coef_mat[, 1])) &&
   !is.null(fit_ig_es$VaR) &&
   !is.null(fit_ig_es$ES) &&
@@ -1698,45 +1698,63 @@ valid_fit_ig <- (
   all(is.finite(fit_ig_es$ES))
 )
 
+############################################
+# Check the one-step-ahead radicand obtained
+# from the current estimation
+############################################
+
 if (valid_fit_ig) {
 
   coef_ig_candidate <- fit_ig_es$coef_mat[, 1]
 
-  ##########################################
-  # Check the one-step-ahead radicand
-  ##########################################
-
-  radicand_ig_oos <- as.numeric(
+  radicand_ig_candidate_oos <- as.numeric(
     coef_ig_candidate[1] +
     coef_ig_candidate[2] * last(fit_ig_es$VaR)^2 +
     coef_ig_candidate[3] * last(r_t_in_s_tin_xts)^2
   )
 
   valid_fit_ig <- (
-    length(radicand_ig_oos) == 1 &&
-    is.finite(radicand_ig_oos) &&
-    radicand_ig_oos >= 0
+    length(radicand_ig_candidate_oos) == 1L &&
+    is.finite(radicand_ig_candidate_oos) &&
+    radicand_ig_candidate_oos >= 0
   )
 }
+
+############################################
+# Record whether the current estimation
+# must use the fallback procedure
+############################################
+
+use_ig_fallback <- !valid_fit_ig
+
+############################################
+# Obtain the coefficients and in-sample
+# VaR and ES paths
+############################################
 
 if (valid_fit_ig) {
 
   ##########################################
-  # Successful estimation
+  # Successful current estimation
   ##########################################
 
   coef_ig <- coef_ig_candidate
 
-  VaR_IG_in_s <- as.numeric(fit_ig_es$VaR)
-  ES_IG_in_s  <- as.numeric(fit_ig_es$ES)
+  VaR_IG_in_s <- as.numeric(
+    fit_ig_es$VaR
+  )
+
+  ES_IG_in_s <- as.numeric(
+    fit_ig_es$ES
+  )
 
 } else {
 
   ##########################################
   # Failed estimation or invalid forecast:
-  # use the coefficients from the previous
-  # point and reconstruct the VaR and ES
-  # paths on the updated rolling window
+  # use the previous coefficients and
+  # reconstruct the paths on the updated
+  # rolling window
   ##########################################
 
   if (
@@ -1752,21 +1770,58 @@ if (valid_fit_ig) {
     )
   }
 
-  failed_IG <- c(failed_IG, tt)
+  failed_IG <- c(
+    failed_IG,
+    tt
+  )
 
-  # Use the coefficients from the previous point
+  ##########################################
+  # Use the coefficients from the previous
+  # rolling estimation point
+  ##########################################
+
   coef_ig <- coef_ig_previous
 
-  # Current updated in-sample return window
-  r_ig_current <- as.numeric(r_t_in_s_tin_xts)
-  n_ig <- length(r_ig_current)
+  r_ig_current <- as.numeric(
+    r_t_in_s_tin_xts
+  )
 
-  # Initialize the new in-sample VaR path
-  VaR_IG_in_s <- rep(NA_real_, n_ig)
+  n_ig <- length(
+    r_ig_current
+  )
 
-  # The first observation of the updated window corresponds
-  # to the second observation of the previous window
-  VaR_IG_in_s[1] <- VaR_IG_in_s_previous[2]
+  ##########################################
+  # Initialize the reconstructed in-sample
+  # VaR path
+  ##########################################
+
+  VaR_IG_in_s <- rep(
+    NA_real_,
+    n_ig
+  )
+
+  ##########################################
+  # The first observation of the updated
+  # window corresponds to the second
+  # observation of the previous window
+  ##########################################
+
+  if (
+    length(VaR_IG_in_s_previous) < 2L ||
+    !is.finite(VaR_IG_in_s_previous[2])
+  ) {
+    stop(
+      paste0(
+        "No valid initial IG VaR is available at tt = ",
+        tt,
+        "."
+      )
+    )
+  }
+
+  VaR_IG_in_s[1] <- as.numeric(
+    VaR_IG_in_s_previous[2]
+  )
 
   ##########################################
   # Reconstruct the in-sample VaR path
@@ -1776,12 +1831,12 @@ if (valid_fit_ig) {
 
     radicand_ig_in_s <- as.numeric(
       coef_ig[1] +
-      coef_ig[2] * VaR_IG_in_s[i - 1]^2 +
-      coef_ig[3] * r_ig_current[i - 1]^2
+      coef_ig[2] * VaR_IG_in_s[i - 1L]^2 +
+      coef_ig[3] * r_ig_current[i - 1L]^2
     )
 
     if (
-      length(radicand_ig_in_s) != 1 ||
+      length(radicand_ig_in_s) != 1L ||
       !is.finite(radicand_ig_in_s)
     ) {
       stop(
@@ -1797,22 +1852,38 @@ if (valid_fit_ig) {
 
     if (radicand_ig_in_s >= 0) {
 
-      # Valid radicand: update the IG VaR recursively
-      VaR_IG_in_s[i] <- -sqrt(radicand_ig_in_s)
+      ######################################
+      # Valid radicand: recursive IG update
+      ######################################
+
+      VaR_IG_in_s[i] <- -sqrt(
+        radicand_ig_in_s
+      )
 
     } else {
 
-      ########################################
-      # Negative radicand: use the average of
-      # the SAV and AS in-sample VaR values
-      ########################################
+      ######################################
+      # Negative radicand: use the average
+      # of the SAV and AS in-sample VaR
+      ######################################
 
-      fallback_ig <- c(
-        VaR_SAV_in_s[i],
-        VaR_AS_in_s[i]
+      fallback_ig_in_s <- c(
+        as.numeric(VaR_SAV_in_s[i]),
+        as.numeric(VaR_AS_in_s[i])
       )
 
-      if (!any(is.finite(fallback_ig))) {
+      fallback_ig_in_s <- fallback_ig_in_s[
+        is.finite(fallback_ig_in_s)
+      ]
+
+      if (length(fallback_ig_in_s) > 0L) {
+
+        VaR_IG_in_s[i] <- mean(
+          fallback_ig_in_s
+        )
+
+      } else {
+
         stop(
           paste0(
             "Negative IG in-sample radicand at tt = ",
@@ -1823,21 +1894,6 @@ if (valid_fit_ig) {
           )
         )
       }
-
-      VaR_IG_in_s[i] <- mean(
-        fallback_ig[is.finite(fallback_ig)]
-      )
-
-      warning(
-        paste0(
-          "Negative IG in-sample radicand at tt = ",
-          tt,
-          ", position i = ",
-          i,
-          ". The average of the available SAV and AS VaR values was used."
-        ),
-        call. = FALSE
-      )
     }
   }
 
@@ -1848,20 +1904,7 @@ if (valid_fit_ig) {
   ES_IG_in_s <- -abs(
     (1 + exp(coef_ig[4])) * VaR_IG_in_s
   )
-
-  warning(
-    paste0(
-      "IG estimation failed or produced an invalid forecast at tt = ",
-      tt,
-      ". Previous coefficients were used."
-    ),
-    call. = FALSE
-  )
 }
-
-############################################
-# One-step-ahead VaR and ES forecasts
-############################################
 
 ############################################
 # One-step-ahead VaR and ES forecasts
@@ -1873,13 +1916,22 @@ radicand_ig_oos <- as.numeric(
   coef_ig[3] * last(r_t_in_s_tin_xts)^2
 )
 
-if (
+valid_radicand_ig_oos <- (
   length(radicand_ig_oos) == 1L &&
   is.finite(radicand_ig_oos) &&
   radicand_ig_oos >= 0
+)
+
+if (
+  !use_ig_fallback &&
+  valid_radicand_ig_oos
 ) {
 
-  # Valid radicand: compute the IG VaR forecast
+  ##########################################
+  # Valid current estimation and valid
+  # radicand: use the IG VaR forecast
+  ##########################################
+
   fit_ig_es_VaR_oos <- as.numeric(
     -sqrt(radicand_ig_oos)
   )
@@ -1887,13 +1939,14 @@ if (
 } else {
 
   ##########################################
-  # Invalid or negative radicand: use the
-  # average of SAV and AS VaR forecasts
+  # Failed current estimation or invalid
+  # radicand: use the average of the SAV
+  # and AS VaR forecasts
   ##########################################
 
   fallback_ig_oos <- c(
-    fit_sav_es_VaR_oos,
-    fit_as_es_VaR_oos
+    as.numeric(VaR_oos[tt, "SAV"]),
+    as.numeric(VaR_oos[tt, "AS"])
   )
 
   fallback_ig_oos <- fallback_ig_oos[
@@ -1906,21 +1959,34 @@ if (
       fallback_ig_oos
     )
 
+  } else if (
+    tt > 1L &&
+    is.finite(VaR_oos[tt - 1L, m])
+  ) {
+
+    ########################################
+    # Final fallback: previous IG forecast
+    ########################################
+
+    fit_ig_es_VaR_oos <- as.numeric(
+      VaR_oos[tt - 1L, m]
+    )
+
   } else {
 
-    # Final fallback: use the previous IG VaR forecast
-    fit_ig_es_VaR_oos <- VaR_oos[tt - 1L, m]
+    stop(
+      paste0(
+        "No valid IG, SAV or AS VaR forecast is available at tt = ",
+        tt,
+        "."
+      )
+    )
   }
-
-  warning(
-    paste0(
-      "Invalid or negative IG out-of-sample radicand at tt = ",
-      tt,
-      ". A fallback VaR forecast was used."
-    ),
-    call. = FALSE
-  )
 }
+
+############################################
+# Compute and store the ES forecast
+############################################
 
 fit_ig_es_ES_oos <- -abs(
   (1 + exp(coef_ig[4])) * fit_ig_es_VaR_oos
@@ -1929,55 +1995,65 @@ fit_ig_es_ES_oos <- -abs(
 VaR_oos[tt, m] <- fit_ig_es_VaR_oos
 ES_oos[tt, m]  <- fit_ig_es_ES_oos
 
-
-
 ############################################
 # Construct the rolling training data
 ############################################
 
-if (tt == 1) {
+if (tt == 1L) {
 
+  ##########################################
   # First step: only in-sample observations
-  VaR_training_data_mod[, m, tt] <- VaR_IG_in_s
-  ES_training_data_mod[, m, tt]  <- ES_IG_in_s
+  ##########################################
+
+  VaR_training_data_mod[, m, tt] <-
+    VaR_IG_in_s
+
+  ES_training_data_mod[, m, tt] <-
+    ES_IG_in_s
 
 } else if (tt <= Tin) {
 
-  # Mixed window: first in-sample, last out-of-sample
-  n_in  <- Tin - tt + 1
-  n_oos <- (n_in + 1):Tin
+  ##########################################
+  # Mixed window: first in-sample, then
+  # previous out-of-sample observations
+  ##########################################
+
+  n_in <- Tin - tt + 1L
+  n_oos <- (n_in + 1L):Tin
 
   VaR_training_data_mod[1:n_in, m, tt] <-
     VaR_IG_in_s[1:n_in]
 
   VaR_training_data_mod[n_oos, m, tt] <-
-    VaR_oos[1:(tt - 1), m]
+    VaR_oos[1:(tt - 1L), m]
 
   ES_training_data_mod[1:n_in, m, tt] <-
     ES_IG_in_s[1:n_in]
 
   ES_training_data_mod[n_oos, m, tt] <-
-    ES_oos[1:(tt - 1), m]
+    ES_oos[1:(tt - 1L), m]
 
 } else {
 
-  # Only out-of-sample observations
+  ##########################################
+  # Only previous out-of-sample observations
+  ##########################################
+
   VaR_training_data_mod[, m, tt] <-
-    VaR_oos[(tt - Tin):(tt - 1), m]
+    VaR_oos[(tt - Tin):(tt - 1L), m]
 
   ES_training_data_mod[, m, tt] <-
-    ES_oos[(tt - Tin):(tt - 1), m]
+    ES_oos[(tt - Tin):(tt - 1L), m]
 }
 
 ############################################
-# Store the current estimates for the
-# following rolling estimation point
+# Store the current estimates for the next
+# rolling estimation point
 ############################################
 
 coef_ig_previous <- coef_ig
 VaR_IG_in_s_previous <- VaR_IG_in_s
 ES_IG_in_s_previous <- ES_IG_in_s
-
 
 ############################################
 ############################################ SAV-X: rvol_5
