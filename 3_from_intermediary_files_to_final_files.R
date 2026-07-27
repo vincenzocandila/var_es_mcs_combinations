@@ -72,7 +72,9 @@ ES_training_data_mod <- res$ES_training_data_mod
 #####################################################################################
 
 # Output file name for saving results
-filename <- "data/results/sp500_partial_results.RData" # or "data/results/shanghai_comp_partial_results.RData"
+
+filename <- "data/results/sp500_tau_0.025_partial_results.RData" 
+final_filename <- "data/results/sp500_tau_0.025_final_results.RData"
 
 #####################################################################################
 # 3. Set parameters for MCS and forecast combination methods
@@ -455,9 +457,10 @@ for (i in seq_len(N_model)) {
   
   
   #####################################################################################
-  # 6. Save all results to file at each step (allows recovery if the loop is interrupted)
+  # 6. Save all results
   #####################################################################################
-  
+ 
+if (tt %% 50 == 0| tt == nstep){
   save(
     Backtesting_pvalues,
     Mean_Comb_VaR,   Mean_Comb_ES,
@@ -475,6 +478,7 @@ for (i in seq_len(N_model)) {
     alpha,
     lab_full,
     file = filename)
+}
   
 }
 
@@ -569,5 +573,5 @@ lab_full,tau,
 Backtesting_pvalues,
 db_loss_oos, VaR_oos_ev, ES_oos_ev, 
 MCS_est_included,MCS_est_included_w,
-file="data/results/sp500_final_results_generated.RData") # or "shanghai_comp_final_results_generated.RData"
+file=final_filename)
 
