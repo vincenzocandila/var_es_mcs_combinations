@@ -41,7 +41,7 @@ betae_old <- c(0, rep(1 / nmod, nmod))
 
 for (i in 1:nstep) {
 
-  print(paste('estimation step', i, 'out of', nstep))
+  print(paste('MSC estimation step', i, 'out of', nstep))
 
   # Training data for step i
   VaRm <- VaR_training_data_mod[, , i]   # in-sample VaR forecasts [Tin x nmod]

@@ -36,7 +36,7 @@ AL_store         <- matrix(0, nrow = nstep, ncol = 1)        # minimized AL scor
 
 for (i in 1:nstep) {
 
-  print(paste('estimation step', i, 'out of', nstep))
+  print(paste('RSC estimation step', i, 'out of', nstep))
 
   # Training data for step i
   VaRm <- VaR_training_data_mod[, , i]   # in-sample VaR forecasts [Tin x nmod]
