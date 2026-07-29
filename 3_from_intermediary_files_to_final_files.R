@@ -172,12 +172,11 @@ for (i in seq_len(N_model)) {
     e <- ES_s[, i]
 
     bt1 <- BacktestVaR(r_s, v, tau)
-    bt3 <- BacktestVaR(r_s, v, tau)
-
+    
     Backtesting_pvalues[i, , tt] <- round(c(
       as.numeric(bt1$LRuc[2]),
       as.numeric(bt1$LRcc[2]),
-      as.numeric(bt3$DQ[2]),
+      as.numeric(bt1$DQ[2]),
       esr_backtest(r_s, v, e, tau, version = 1)$pvalue_twosided_asymptotic,
       esr_backtest(r_s, v, e, tau, version = 2)$pvalue_twosided_asymptotic,
       esr_backtest(r_s, v, e, tau, version = 3)$pvalue_twosided_asymptotic
@@ -318,7 +317,7 @@ for (i in seq_len(N_model)) {
     # Extract training-period forecasts and losses for MCS-selected models
     VaRm_mcs  <- as.matrix(VaR_training_data_mod[, MCS_models, tt])
     ESm_mcs   <- as.matrix(ES_training_data_mod[,  MCS_models, tt])
-    FZmat_mcs <- as.matrix(db_loss_training[,       MCS_models])
+    FZmat_mcs <- as.matrix(db_loss_training_w[,       MCS_models])
     
     VaRm <- VaRm_mcs
     ESm  <- ESm_mcs
