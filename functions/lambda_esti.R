@@ -68,12 +68,21 @@ lambda_esti <- function(rets, alfa, VaRm, ESm, FZmat) {
     }
   }
   
-  # Select best estimate and report output
-  index <- which(ffstore[,2]<1e+100)
-  ffstore <- ffstore[index,]
-  ffstore <- ffstore[order(ffstore[, 2]), ]
-  esti <- ffstore[1, 1]
-  AL <- ffstore[1, 2]
-  
-  return(list(esti = esti, AL = AL))
+
+# Select best estimate and report output
+index <- which(ffstore[,2] < 1e+100)
+ 
+if (length(index) == 0) {
+  warning("lambda_esti: no valid solution found (all AL values >= 1e+100); returning NA")
+  return(list(esti = NA, AL = NA))
+}
+ 
+ffstore <- ffstore[index, , drop = FALSE]
+ffstore <- ffstore[order(ffstore[, 2]), , drop = FALSE]
+ 
+esti <- ffstore[1, 1]
+AL   <- ffstore[1, 2]
+ 
+return(list(esti = esti, AL = AL))
+
 }
