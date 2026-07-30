@@ -14,7 +14,7 @@ Amendola A., Candila V., Naimoli A., and G. Storti (2026),
 
 ## 📅 Assembly Date and Contact
 
-**Package assembled:** 3 June 2026  
+**Package assembled:** 30 July 2026  
 **Contact:** Vincenzo Candila — vcandila@unisa.it  
 *(Please reach out for any questions about the code or data)*
 
@@ -53,13 +53,30 @@ combining_var_es_mcs_combinations/
         ├── nikkei_data.RData                     # NIKKEI returns and realized volatility measures
         └── Global_Policy_Uncertainty_Data.csv    # Global Economic Policy Uncertainty index (EPU)
     ├── intermediary/
-        ├── sp500_tau_0.025_files.RData           # S&P 500 intermediary files needed to compute the proposed combinations
-        └── shanghai_comp_tau_0.025_files.RData   # Shanghai Comp. intermediary files needed to compute the proposed comb.
+        ├── sp500_tau_0.025_gen_files.RData           # S&P 500 intermediary files needed to compute the proposed combinations
+        └── shanghai_comp_tau_0.025_gen_files.RData   # Shanghai Comp. intermediary files needed to compute the proposed comb.
     └── results/
-        ├── sp500_final_results_precomputed.RData             # Results for S&P 500 (τ = 2.5%)
-        ├── shanghai_comp_final_results_precomputed.RData     # Results for Shanghai Comp. (τ = 2.5%)
         ├── all_indices_tau_0.025.RData                       # Result tables for all nine indices (τ = 2.5%)
-        └── all_indices_tau_0.01.RData                        # Result tables for all nine indices (τ = 1%)
+        ├── all_indices_tau_0.01.RData                        # Result tables for all nine indices (τ = 1%)
+        ├── bovespa_tau_0.01_final_results.RData              # Results for Bovespa (τ = 1%)
+        ├── bovespa_tau_0.025_final_results.RData             # Results for Bovespa (τ = 2.5%)
+        ├── bsesn_tau_0.01_final_results.RData                # Results for BSESN (τ = 1%)
+        ├── bsesn_tau_0.025_final_results.RData               # Results for BSESN (τ = 2.5%)
+        ├── eurostoxx50_tau_0.01_final_results.RData          # Results for Eurostoxx50 (τ = 1%)
+        ├── eurostoxx50_tau_0.025_final_results.RData         # Results for Eurostoxx50 (τ = 2.5%)
+        ├── hsi_tau_0.01_final_results.RData                  # Results for Hang Seng (τ = 1%)
+        ├── hsi_tau_0.025_final_results.RData                 # Results for Hang Seng (τ = 2.5%)
+        ├── ixic_tau_0.01_final_results.RData                 # Results for NASDAQ (τ = 1%)
+        ├── ixic_tau_0.025_final_results.RData                # Results for NASDAQ (τ = 2.5%)
+        ├── mxx_tau_0.01_final_results.RData                  # Results for MXX (τ = 1%)
+        ├── mxx_tau_0.025_final_results.RData                 # Results for MXX (τ = 2.5%)
+        ├── nikkei_tau_0.01_final_results.RData               # Results for Nikkei (τ = 1%)
+        ├── nikkei_tau_0.025_final_results.RData              # Results for Nikkei (τ = 2.5%)
+        ├── shanghai_comp_tau_0.01_final_results.RData        # Results for Shanghai Composite (τ = 1%)
+        ├── shanghai_comp_tau_0.025_final_results.RData       # Results for Shanghai Composite (τ = 2.5%)
+        ├── sp500_tau_0.01_final_results.RData                # Results for S&P 500 (τ = 1%)
+        └── sp500_tau_0.025_final_results.RData               # Results for S&P 500 (τ = 2.5%)
+        
 ```
 
 ---
@@ -67,7 +84,7 @@ combining_var_es_mcs_combinations/
 ## 💻 Computing Environment
 
 - **Language:** R version 4.4.3
-- **Operating system:** Windows 10 (code is platform-independent)
+- **Operating system:** Windows 11 (code is platform-independent)
 
 ### Required R packages
 
@@ -148,7 +165,7 @@ The replication workflow is organized into three main stages:
 
 ## 📦 Intermediary Data
 
-- **Files:** `data/intermediary/sp500_tau_0.025_files.RData`, `data/intermediary/shanghai_comp_tau_0.025_files.RData`
+- **Files:** `data/intermediary/sp500_tau_0.025_gen_files.RData`, `data/intermediary/shanghai_comp_tau_0.025_gen_files.RData`
 - **Variables included in each file:**
   - `Tin`					 : length of the training period
   - `nstep`					 : number of forecasting steps (model re-estimations) and out-of-sample period length
@@ -165,8 +182,8 @@ The replication workflow is organized into three main stages:
 
 ## 📊 Results Data
 
-- **Files:** `data/results/sp500_final_results_precomputed.RData`, `data/results/shanghai_comp_final_results_precomputed.RData`, `data/results/all_indices_tau_0.025.RData`, `data/results/all_indices_tau_0.01.RData.RData`, 
-- **Variables included in** `data/results/sp500_final_results_precomputed.RData` and `data/results/shanghai_comp_final_results_precomputed.RData`:
+- **Files:** The `data/results/` directory contains the pre-computed result files (including the proposed combinations) for all considered indices and both coverage levels (`τ = 0.025` and `τ = 0.01`), and the aggregated files `all_indices_tau_0.025.RData` and `all_indices_tau_0.01.RData` used to reproduce Table 7.
+- **Variables included in the pre-computed result files**:
 - `r_t_oos_full_plot`: daily log-returns used for the training-period plots.
 - `r_t_oos_full`: daily log-returns for the out-of-sample period.
 - `nstep`: total number of model re-estimations, corresponding to the length of the out-of-sample period.
@@ -174,12 +191,13 @@ The replication workflow is organized into three main stages:
 - `tau`: coverage level.
 - `Backtesting_pvalues`: p-values of the six backtests reported in Table 4 of the paper, by model and forecasting step.
 - `db_loss_oos`: matrix of Fissler-Ziegel losses for the out-of-sample period for the 42 models and forecast combinations.
-- `VaR_oos_ev` and `ES_oos_ev`: matrices of VaR and ES forecasts for the out-of-sample period for the 42 models and forecast combinations.
+- `VaR_oos_ev` and `ES_oos_ev`: matrices of VaR and ES forecasts for the out-of-sample period for the 32 models, the six proposed forecast combinations and the four benchmarks.
 - `MCS_est_included`: list of models included at each forecasting step in the Set of Superior Models (SSM) from the Model Confidence Set (MCS), using the unweighted Fissler-Ziegel loss.
 - `MCS_est_included_w`: list of models included at each forecasting step in the Set of Superior Models (SSM) from the Model Confidence Set (MCS), using the weighted Fissler-Ziegel loss.
 - **Variables included in** `data/results/all_indices_tau_0.025.RData` and `data/results/all_indices_tau_0.01.RData`:
 - `list_of_tabs`: list of tables (one for each index) containing models in rows and backtesting p-values (`UC`, `CC`, `DQ`, `BD-1`, `BD-2`, `BD-3`) together with the Fissler-Ziegel loss in columns. LaTeX markers (e.g., `\cellcolor{...}`) indicate whether models simultaneously pass all backtests at the 5% significance level and belong to the Set of Superior Models (SSM) from the Model Confidence Set (MCS) at the 25% significance level.
 - `lab_full`: model labels, including the 32 individual models, the four benchmarks (`EW-Comb`, `Median-Comb`, `RS-Comb`, `MS-Comb`), and the six proposed forecast combinations (`MCS-Comb`, `WL-MCS-Comb`, `MCS-RS-Comb`, `WL-MCS-RS-Comb`, `MCS-MS-Comb`, `WL-MCS-MS-Comb`).
+- `tau`: coverage level.
 
 ---
 
@@ -187,16 +205,15 @@ The replication workflow is organized into three main stages:
 
 | Output     | Script  | Data required  |
 |:-----------|:---------------|:---------------|
-| Table 2 — Summary statistics | `code/1_replicate_table_2.R` | Files in `data/raw/`: `SP500_data.RData`, `Shanghai_comp_data.RData`, `Global_Policy_Uncertainty_Data.csv` |
-| Figure 2(a) — Inclusion plot | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`:Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
-| Figure 2(b) — Inclusion plot | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`:Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
-| Figure 2(c) — Inclusion plot | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`:Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
-| Table 5 — S&P 500 out-of-sample evaluation | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`: Either `sp500_final_results_precomputed.RData` or `sp500_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
-| Table 6 — Shanghai Comp. out-of-sample evaluation | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`: Either `shanghai_comp_final_results_precomputed.RData` or `shanghai_comp_final_results_generated.RData` generated by `code/3_from_intermediary_files_to_final_files.R` |
-| Table 7 — Results across all indices and risk levels | `code/4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`: `all_indices_tau_0.01.RData` and `all_indices_tau_0.025.RData` |
+| Table 2 — Summary statistics | `1_replicate_table_2.R` | Files in `data/raw/`: `SP500_data.RData`, `Shanghai_comp_data.RData`, `Global_Policy_Uncertainty_Data.csv` |
+| Figure 2(a) — Inclusion plot | `4_replicate_figure_2_and_tables_5_to_7.R` | Pre-computed data in `data/results/shanghai_comp_tau_0.025_final_results.RData` (or generated by `3_from_intermediary_files_to_final_files.R`) |
+| Figure 2(b) — Inclusion plot | `4_replicate_figure_2_and_tables_5_to_7.R` | Pre-computed data in `data/results/shanghai_comp_tau_0.025_final_results.RData` (or generated by `3_from_intermediary_files_to_final_files.R`) |
+| Figure 2(c) — Inclusion plot | `4_replicate_figure_2_and_tables_5_to_7.R` | Pre-computed data in `data/results/shanghai_comp_tau_0.025_final_results.RData` (or generated by `3_from_intermediary_files_to_final_files.R`) |
+| Table 5 — S&P 500 out-of-sample evaluation | `4_replicate_figure_2_and_tables_5_to_7.R` | Pre-computed data in `data/results/sp500_tau_0.025_final_results.RData` (or generated by `3_from_intermediary_files_to_final_files.R`) |
+| Table 6 — Shanghai Comp. out-of-sample evaluation | `4_replicate_figure_2_and_tables_5_to_7.R` | Pre-computed data in `data/results/shanghai_comp_tau_0.025_final_results.RData` (or generated by `3_from_intermediary_files_to_final_files.R`) |
+| Table 7 — Results across all indices and risk levels | `4_replicate_figure_2_and_tables_5_to_7.R` | Files in `data/results/`: `all_indices_tau_0.01.RData` and `all_indices_tau_0.025.RData` |
 
-**Note on Table 5 and Table 6:** To reproduce exactly the p-values of the Bayer & Dimitriadis (2020) tests reported in the paper, the code should be run under R version 4.4.3.
-When using different R versions or computing environments, small numerical differences may arise; these affect only the p-values of these tests and do not alter the main conclusions.
+**Note on Table 5 and Table 6:** To reproduce exactly the p-values of the Bayer and Dimitriadis (2020) tests reported in the paper, the code should be run under R version 4.4.3, with each table generated in a fresh R session. Running the code for Table 6 immediately after Table 5 within the same R session, or using a different R version or computing environment, may lead to small numerical differences in these p-values. These differences do not affect the main conclusions of the paper.
 
 
 ---
