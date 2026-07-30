@@ -162,7 +162,7 @@ cols_var<-matrix(rep(NA,3*N_model_full),ncol=3)
 for (i in 1:N_model_full){
 cols_var[i,1]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau)$LRuc[2])
 cols_var[i,2]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau)$LRcc[2])
-cols_var[i,3]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau, Lags = 4)$DQ[2])
+cols_var[i,3]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau, Lags = 5)$DQ[2])
 }
 
 cols_var<-round(cols_var,3)
@@ -270,7 +270,7 @@ cols_var<-matrix(rep(NA,3*N_model_full),ncol=3)
 for (i in 1:N_model_full){
 cols_var[i,1]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau)$LRuc[2])
 cols_var[i,2]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau)$LRcc[2])
-cols_var[i,3]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau, Lags = 4)$DQ[2])
+cols_var[i,3]<-as.numeric(BacktestVaR(r_t_oos_full, VaR_oos_ev[,i], tau, Lags = 5)$DQ[2])
 }
 
 cols_var<-round(cols_var,3)
@@ -339,10 +339,12 @@ tab_dt_f(final_tab, title = "Table 6: Shanghai Composite out-of-sample evaluatio
 # these evaluation tables across all nine indices and both coverage
 # levels.
 #
-# Alternatively, users can fully regenerate the evaluation tables
-# from the raw data. For each index and coverage level, this can be
-# done by running Scripts 2, 3, and Script 4 (lines 13--31 and 114--198).
-#
+# Alternatively, users can reproduce the evaluation tables from the
+# pre-computed result files provided. For each index and coverage level,
+# this can be done by running Script 4 (lines 13--31, line 42 after
+# changing the index name, and lines 114--198). Identical results can
+# also be obtained from the raw data by running Scripts 2 and 3.
+# 
 # The object final_tab_latex obtained at line 198 corresponds to the
 # evaluation table for a single index and should be stored as an
 # element of the list "list_of_tabs". After repeating this procedure

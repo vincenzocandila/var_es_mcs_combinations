@@ -159,7 +159,7 @@ list_of_models<-lab<-c(
 "RGARCH-RB-SS-N","RGARCH-RB-SS-N-CF","RGARCH-RB-SS-t",
 "RGARCH-RK-N","RGARCH-RK-N-CF","RGARCH-RK-t",
 "HS-25","HS-50","HS-100","HS-250","HS-500",
-"SAV","AS","IG",
+"CAViaR-SAV","CAViaR-AS","CAViaR-IG",
 "CAViaR-X-RVOL5","CAViaR-X-RB-SS","CAViaR-X-RK",
 "MF-X-RVOL5","MF-X-RB-SS","MF-X-RK")
 
