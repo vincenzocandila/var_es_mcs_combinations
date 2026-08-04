@@ -49,12 +49,6 @@ source('functions/main_functions.R')
 
 load("data/intermediary/sp500_tau_0.025_gen_files.RData")  
 
-### check if everything is ok
-res<-check_function(VaR_training_data_mod,ES_training_data_mod)
-
-VaR_training_data_mod <- res$VaR_training_data_mod
-ES_training_data_mod <- res$ES_training_data_mod
-
 #####################################################################################
 #### Variables stored in sp500_tau_0.025_gen_files and shanghai_comp_tau_0.025_gen_files:
 ##   Tin					 : length of the training period
@@ -70,6 +64,12 @@ ES_training_data_mod <- res$ES_training_data_mod
 ##   r_t_oos               : matrix of out-of-sample returns                  - nstep x 1
 ##   list_of_models        : character vector of labels for the nmod competing models
 #####################################################################################
+
+### check if everything is ok
+res<-check_function(VaR_training_data_mod,ES_training_data_mod)
+
+VaR_training_data_mod <- res$VaR_training_data_mod
+ES_training_data_mod <- res$ES_training_data_mod
 
 # Output file name for saving results
 
