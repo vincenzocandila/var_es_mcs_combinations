@@ -565,15 +565,15 @@ raw data by running the script
 <ul>
 <li>Pre-computed results are stored in <code>data/results/</code>.</li>
 <li>The script <code>3_from_intermediary_files_to_final_files.R</code>
-(if executed) uses the intermediary datasets to compute the six proposed
-forecast combinations and the four benchmark methods. The resulting
-objects are stored in <code>data/results/</code> and allow the
-replication of Figure 2 and Tables 5 and 6 through the script
-<code>3_replicate_figure_2_and_tables_5_to_7.R</code>.</li>
-<li>Alternatively, the script
-<code>4_replicate_figure_2_and_tables_5_to_7.R</code> reproduces Figure
-2 and Tables 5–7 directly using the pre-computed files included in
-<code>data/results/</code>.</li>
+uses the intermediary datasets, either pre-computed and stored in
+<code>data/intermediary/</code> or generated using
+<code>2_from_raw_files_to_intermediary_files.R</code>, to compute the
+six proposed forecast combinations and the four benchmark methods. The
+resulting objects are stored in <code>data/results/</code>.</li>
+<li>The script <code>4_replicate_figure_2_and_tables_5_to_7.R</code>
+reproduces Figure 2 and Tables 5–7 directly using the pre-computed files
+included in <code>data/results/</code> or those generated through the
+entire workflow.</li>
 </ul></li>
 </ol>
 </div>
@@ -735,7 +735,7 @@ and the six proposed forecast combinations (<code>MCS-Comb</code>,
 <td align="left">Table 2 — Summary statistics</td>
 <td align="left"><code>1_replicate_table_2.R</code></td>
 <td align="left">Files in <code>data/raw/</code>:
-<code>SP500_data.RData</code>, <code>Shanghai_comp_data.RData</code>,
+<code>sp500_data.RData</code>, <code>shanghai_comp_data.RData</code>,
 <code>Global_Policy_Uncertainty_Data.csv</code></td>
 </tr>
 <tr class="even">
