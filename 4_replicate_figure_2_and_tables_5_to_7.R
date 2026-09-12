@@ -285,13 +285,14 @@ r_t_oos<-coredata(r_t_oos_full)
 
 for (i in 1:N_model_full){
 # Bayer & Dimitriadis (2020) test version 1
-cols_es[i,1]<-as.numeric(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 1)$pvalue_twosided_asymptotic)
+cols_es[i,1]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 1)$pvalue_twosided_asymptotic))
 # Bayer & Dimitriadis (2020) test version 2
-cols_es[i,2]<-as.numeric(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 2)$pvalue_twosided_asymptotic)
+cols_es[i,2]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 2)$pvalue_twosided_asymptotic))
 # Bayer & Dimitriadis (2020) test version 3
-cols_es[i,3]<-as.numeric(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 3)$pvalue_twosided_asymptotic)
+cols_es[i,3]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 3)$pvalue_twosided_asymptotic))
 message(i)
 }
+
 
 colnames(cols_es)<-c("BD-1","BD-2","BD-3")
 cols_es<-round(cols_es,3)
@@ -356,8 +357,8 @@ tab_dt_f(final_tab, title = "Table 6: Shanghai Composite out-of-sample evaluatio
 # evaluation table as follows:
 # list_of_tabs <- list()
 # list_of_tabs[[index_name]] <- final_tab_latex
-# where "index_name" identifies the corresponding stock index.
-# After repeating this procedure for all nine stock indices,
+# where "index_name" identifies the corresponding index.
+# After repeating this procedure for all nine indices,
 # "list_of_tabs" will contain nine elements, one for each index.
 ######################################################################
 
