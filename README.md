@@ -14,7 +14,7 @@ Amendola A., Candila V., Naimoli A., and G. Storti (2026),
 
 ## 📅 Assembly Date and Contact
 
-**Package assembled:** 30 July 2026  
+**Package assembled:** 12 September 2026  
 **Contact:** Vincenzo Candila — vcandila@unisa.it  
 *(Please reach out for any questions about the code or data)*
 
@@ -93,7 +93,7 @@ combining_var_es_mcs_combinations/
 | `xts`       | 0.14.1             | Time series management                             |
 | `zoo`       | 1.8.13             | Time series infrastructure                         |
 | `fBasics`   | 4041.97            | Summary statistics                                 |
-| `rugarch`   | 1.5.3              | Model Confidence Set (MCS) procedure via `mcsTest` |
+| `rugarch`   | 1.5.4              | Model Confidence Set (MCS) procedure via `mcsTest` |
 | `GAS`       | 0.3.4.1 (Currently, the GAS package has been removed from the CRAN. But previous versions are available at https://cran.r-project.org/src/contrib/Archive/GAS/)           | Functions for VaR backtesting (`BacktestVaR`) and  Fissler-Ziegel loss evaluation (`FZLoss`)   |   
 | `np`        | 0.60.18            | Automatic block length selection via `b.star` for the bootstrap procedure  within the MCS     |
 | `esback`    | 0.3.1              | Expected Shortfall backtesting                     |
@@ -135,6 +135,7 @@ The replication workflow is organized into three main stages:
    - These intermediary files contain the VaR and ES forecasts produced by the 32 competing models.
    - This allows users to fully reproduce the forecast combinations, tables, figures, and empirical results reported in the paper without regenerating the intermediary objects from the raw data.
    - Alternatively, the intermediary files can be regenerated from the raw data by running the script `2_from_raw_files_to_intermediary_files.R`.
+   - When regenerating the intermediary files, we recommend `running 2_from_raw_files_to_intermediary_files.R` in a fresh R session for each index and coverage level (tau).
 
 3. **Results**
     - Pre-computed results are stored in `data/results/`.
