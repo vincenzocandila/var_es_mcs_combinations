@@ -1575,7 +1575,7 @@ r_t_in_s_est<-zoo::coredata(daily_ret)
 X_in_s_est<-zoo::coredata(X)
 
 
-} else {					# out_of_sample parameter is present
+} else {          # out_of_sample parameter is present
 
 r_t_in_s<-daily_ret[1:(N-out_of_sample)]
 X_in_s_est<-X[1:(N-out_of_sample)]
@@ -1598,6 +1598,7 @@ set.seed(123)
 ############################################### Estimation
 
 if (model=="SAV"&Exp_Short=="No"){
+set.seed(123)
 
 begin_val<-matrix(NA,ncol=3,nrow=R)
 begin_val[,1]<-runif(R,-0.3,0.1)
@@ -1612,7 +1613,7 @@ which_row[i]<-sum(sav_fun(begin_val[i,],r_t_in_s_est,tau))
 }
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est<-suppressWarnings(maxLik(
@@ -1633,6 +1634,7 @@ VaR_oos <- xts::as.xts(VaR_oos,stats::time(r_t_oos))
 
 } else if (model=="SAV"&Exp_Short=="Yes"){
 
+set.seed(123)
 
 begin_val<-matrix(NA,ncol=3,nrow=R)
 begin_val[,1]<-runif(R,-0.3,0.1)
@@ -1647,7 +1649,7 @@ which_row[i]<-sum(sav_fun(begin_val[i,],r_t_in_s_est,tau))
 }
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est_0<-suppressWarnings(maxLik(
@@ -1672,7 +1674,7 @@ start_val<-max_start_value[which.max(sim_llk),]
 names(start_val)<-c("beta_0","beta_1","beta_2","gamma")
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est<- maxLik(sav_fun_es, 
@@ -1694,6 +1696,7 @@ ES_oos <- (1+exp(stats::coef(est)[4]))*VaR_oos
 
 
 } else if (model=="SAVX"&Exp_Short=="No"){
+set.seed(123)
 
 begin_val<-matrix(NA,ncol=3,nrow=R)
 begin_val[,1]<-runif(R,-0.3,0.1)
@@ -1708,7 +1711,7 @@ which_row[i]<-sum(sav_fun_x(begin_val[i,],r_t_in_s_est,tau,X_in_s_est))
 }
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est<-suppressWarnings(maxLik(
@@ -1729,6 +1732,7 @@ VaR_oos <- xts::as.xts(VaR_oos,stats::time(r_t_oos))
 } 
 
 } else if (model=="SAVX"&Exp_Short=="Yes"){
+set.seed(123)
 
 begin_val<-matrix(NA,ncol=3,nrow=R)
 begin_val[,1]<-runif(R,-0.3,0.1)
@@ -1743,7 +1747,7 @@ which_row[i]<-sum(sav_fun_x(begin_val[i,],r_t_in_s_est,tau,X_in_s_est))
 }
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est_0<-suppressWarnings(maxLik(
@@ -1768,7 +1772,7 @@ names(start_val)<-c("beta_0","beta_1","beta_X","gamma")
 
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est<- maxLik(sav_fun_es_x, 
@@ -1791,6 +1795,7 @@ ES_oos <- (1+exp(stats::coef(est)[4]))*VaR_oos
 
 
 } else if (model=="AS"&Exp_Short=="No"){
+set.seed(123)
 
 begin_val<-matrix(NA,ncol=4,nrow=R)
 begin_val[,1]<-runif(R,-0.3,0.1)
@@ -1806,7 +1811,7 @@ which_row[i]<-sum(as_fun(begin_val[i,],r_t_in_s_est,tau))
 }
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est<- suppressWarnings(maxLik(
@@ -1826,6 +1831,7 @@ VaR_oos <- xts::as.xts(VaR_oos,stats::time(r_t_oos))
 }
 
 } else if (model=="AS"&Exp_Short=="Yes"){
+set.seed(123)
 
 begin_val<-matrix(NA,ncol=4,nrow=R)
 begin_val[,1]<-runif(R,-0.3,0.1)
@@ -1841,7 +1847,7 @@ which_row[i]<-sum(as_fun(begin_val[i,],r_t_in_s_est,tau))
 }
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est_0<- suppressWarnings(maxLik(
@@ -1866,7 +1872,7 @@ start_val<-max_start_value[which.max(sim_llk),]
 names(start_val)<-c("beta_0","beta_1","beta_2","beta_3","gamma")
 
 ui<-ci<-NULL
-ui<-rbind(c(0,-1,0,0,0))		## b1 < 0.9999
+ui<-rbind(c(0,-1,0,0,0))    ## b1 < 0.9999
 ci<-c(0.9999)
 
 est<- maxLik(as_fun_es, 
@@ -1888,7 +1894,8 @@ ES_oos <- (1+exp(stats::coef(est)[5]))*VaR_oos
 
 
 } else if (model=="IG"&Exp_Short=="No"){
-  
+  set.seed(123)
+
   begin_val<-matrix(NA,ncol=3,nrow=R)
   begin_val[,1]<-runif(R,0.01,0.3)
   begin_val[,2]<-runif(R,0.4,0.98)
@@ -1904,9 +1911,9 @@ ES_oos <- (1+exp(stats::coef(est)[5]))*VaR_oos
   ui<-ci<-NULL
   
   ui<-rbind(
-    c(-1,0,0),					## b0 < 0.9999
-    c(0,-1,0),				 	## b1 < 0.9999
-    c(0,0,-1))					## b2 < 0.9999
+    c(-1,0,0),          ## b0 < 0.9999
+    c(0,-1,0),          ## b1 < 0.9999
+    c(0,0,-1))          ## b2 < 0.9999
   
   ci<-c(0.9999,0.9999,0.9999)
   
@@ -1927,6 +1934,7 @@ ES_oos <- (1+exp(stats::coef(est)[5]))*VaR_oos
   }
   
 } else if (model=="IG"&Exp_Short=="Yes"){
+set.seed(123)
 
 begin_val<-matrix(NA,ncol=3,nrow=R)
 begin_val[,1]<-runif(R,0.01,0.3)
@@ -1943,9 +1951,9 @@ which_row[i]<-sum(ig_fun(begin_val[i,],r_t_in_s_est,tau))
 ui<-ci<-NULL
 
 ui<-rbind(
-c(-1,0,0),					## b0 < 0.9999
-c(0,-1,0),				 	## b1 < 0.9999
-c(0,0,-1))					## b2 < 0.9999
+c(-1,0,0),          ## b0 < 0.9999
+c(0,-1,0),          ## b1 < 0.9999
+c(0,0,-1))          ## b2 < 0.9999
 
 ci<-c(0.9999,0.9999,0.9999)
 
@@ -1973,9 +1981,9 @@ names(start_val)<-c("beta_1","beta_2","beta_3","gamma")
 ui<-ci<-NULL
 
 ui<-rbind(
-c(-1,0,0,0),					## b0 < 0.9999
-c(0,-1,0,0),				 	## b1 < 0.9999
-c(0,0,-1,0))					## b2 < 0.9999
+c(-1,0,0,0),          ## b0 < 0.9999
+c(0,-1,0,0),          ## b1 < 0.9999
+c(0,0,-1,0))          ## b2 < 0.9999
 
 ci<-c(0.9999,0.9999,0.9999)
 
@@ -2016,6 +2024,8 @@ rownames(mat_coef)<-names(stats::coef(est))
 #### var-cov-matrix
 
 if (std_err!="bootstrap"){
+  set.seed(123)
+
 k_t_hat<-stats::mad(res)
 m_t_hat<-quantreg::bandwidth.rq(tau,N_est)
 c_t_hat<-k_t_hat*(qnorm(tau+m_t_hat)-qnorm(tau-m_t_hat))
@@ -2035,6 +2045,7 @@ mat_boot_results<-matrix(rep(NA),nrow=B,ncol=N_coef)
 #pb <- utils::txtProgressBar(0, B, style = 3)
 
 for(b in 1:B){
+set.seed(123)
 
 ##### first step: compute the boostrapped series of residuals
 
@@ -2268,8 +2279,6 @@ print.rqmidas(res_f)
 
 }
 
-
-
 ########################################### Mixed-Frequency Quantile Regression with ES via ALD 
 
 ###############################################################################################
@@ -2484,7 +2493,6 @@ return(VaR_t)
 #          out_of_sample -> out-of-sample size (optional)
 # Output : object containing estimation and forecasting results
 ###############################################################################################
-
 uqfit<-function(
 model,
 tau,
@@ -2547,7 +2555,7 @@ mv_m_in_s<-mv_m
 X_in_s<-X
 
 
-} else {					# out_of_sample parameter is present
+} else {          # out_of_sample parameter is present
 
 r_t_in_s<-daily_ret[1:(N-out_of_sample)]
 mv_m_in_s<-mv_m[,1:(N-out_of_sample)]
@@ -2568,6 +2576,7 @@ N<-length(r_t_in_s)
 if (model=="lARCH"&Exp_Short=="No"){
 ES<-ES_oos<-NA
 ############################ construction of X_t matrix
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -2603,6 +2612,7 @@ VaR_oos<-stats::predict(res,newdata=X_t_oos)[(length(VaR_oos)-out_of_sample+1):l
 
 } else if (model=="lARCH"&Exp_Short=="Yes"){
 ############################ construction of X_t matrix
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -2664,6 +2674,7 @@ ES_oos<-as.xts(ES_oos,stats::time(r_t_oos))
 } else if (model=="lARCHX"&Exp_Short=="No"){
 ES<-ES_oos<-NA
 ############################ construction of X_t matrix
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -2706,6 +2717,7 @@ VaR_oos<-stats::predict(res,newdata=X_t_oos)[(length(VaR_oos)-out_of_sample+1):l
 
 } else if (model=="lARCHX"&Exp_Short=="Yes"){
 ############################ construction of X_t matrix
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -2774,6 +2786,7 @@ ES_oos<-as.xts(ES_oos,stats::time(r_t_oos))
 ######################################################
 } else if (model=="lARCHMIDAS"&Exp_Short=="No"){
 ES<-ES_oos<-NA
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -2797,7 +2810,7 @@ w2<-w2_seq[r]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_2<-NULL
 X_t_2<-zoo::coredata(cbind(X_t,abs(tau_d)))[,2:(q+2)]
@@ -2836,7 +2849,7 @@ mv_m_oos_2<-mv_m[,(N_full-out_of_sample*5-q+1):N_full]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_oos_2, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_oos<-as.data.frame(cbind(X_t_oos,abs(tau_d)))
 
@@ -2847,6 +2860,7 @@ VaR_oos<-stats::predict(res,newdata=X_t_oos)[(length(VaR_oos)-out_of_sample+1):l
 }
 ########################################################
 } else if (model=="lARCHMIDAS"&Exp_Short=="Yes"){
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -2870,7 +2884,7 @@ w2<-w2_seq[r]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_2<-NULL
 X_t_2<-zoo::coredata(cbind(X_t,abs(tau_d)))[,2:(q+2)]
@@ -2896,7 +2910,7 @@ res<-(res_first_step[r_star])[[1]]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_2<-NULL
 X_t_2<-zoo::coredata(cbind(X_t,abs(tau_d)))[,2:(q+2)]
@@ -2934,7 +2948,7 @@ mv_m_oos_2<-mv_m[,(N_full-out_of_sample*5-q+1):N_full]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_oos_2, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_oos<-as.data.frame(cbind(X_t_oos,abs(tau_d)))
 
@@ -2956,6 +2970,7 @@ ES_oos<-as.xts(ES_oos,stats::time(r_t_oos))
 } else if (model=="lARCHMIDASX"&Exp_Short=="No"){
 ES<-ES_oos<-NA
 ############################ construction of X_t matrix
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -2981,7 +2996,7 @@ w2<-w2_seq[r]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas)) 
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_2<-NULL
 X_t_2<-coredata(cbind(X_t,abs(tau_d)))[,2:(q+3)]
@@ -3023,7 +3038,7 @@ mv_m_oos_2<-mv_m[,(N_full-out_of_sample*5-q+1):N_full]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_oos_2, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_oos<-as.data.frame(cbind(X_t_oos,tau_d))
 
@@ -3034,6 +3049,7 @@ VaR_oos<-stats::predict(res,newdata=X_t_oos)[(length(VaR_oos)-out_of_sample+1):l
 }
 ##################################################
 } else if (model=="lARCHMIDASX"&Exp_Short=="Yes"){
+set.seed(123)
 
 X_t<-cbind(
 rep(1,N),
@@ -3059,7 +3075,7 @@ w2<-w2_seq[r]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_2<-NULL
 X_t_2<-zoo::coredata(cbind(X_t,abs(tau_d)))[,2:(q+3)]
@@ -3085,7 +3101,7 @@ res<-(res_first_step[r_star])[[1]]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_2<-NULL
 X_t_2<-zoo::coredata(cbind(X_t,abs(tau_d)))[,2:(q+3)]
@@ -3099,7 +3115,7 @@ names(start_val)[(q+4)]<-"theta_gamma"
 #if(start_val["beta_X"]<0.001){
 #start_val["beta_X"]<-0.01
 #}
-
+set.seed(123)
 res<- maxLik(lARCH_fun_es, 
 start=start_val, 
 ret=zoo::coredata(r_t_in_s),
@@ -3128,7 +3144,7 @@ mv_m_oos_2<-mv_m[,(N_full-out_of_sample*5-q+1):N_full]
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_oos_2, c(K+1),weights = betas))
-tau_d<-tau_d[(K+1),]	 
+tau_d<-tau_d[(K+1),]   
 
 X_t_oos<-as.data.frame(cbind(X_t_oos,abs(tau_d)))
 
@@ -3169,6 +3185,7 @@ mat_boot_results<-matrix(rep(NA),nrow=B,ncol=N_coef)
 # pb <- utils::txtProgressBar(0, B, style = 3)
 
 for(b in 1:B){
+set.seed(123)
 
 ##### first step: compute the boostrapped series of residuals
 
@@ -3574,7 +3591,7 @@ method="BFGS")
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas))
-tau_d<-abs(tau_d[(K+1),])	
+tau_d<-abs(tau_d[(K+1),]) 
 
 if(q==1){
 b0<-stats::coef(res)[1]
@@ -3781,7 +3798,7 @@ method="BFGS")
 
 betas<-c(rev(rumidas::beta_function(1:(K+1),(K+1),w1,w2_star))[2:(K+1)],0)
 tau_d<- suppressWarnings(roll::roll_sum(mv_m_in_s, c(K+1),weights = betas))
-tau_d<-abs(tau_d[(K+1),])	
+tau_d<-abs(tau_d[(K+1),]) 
 
 X_boot<-abs(X_in_s)
 
@@ -4219,100 +4236,189 @@ check_stability <- function(fit_obj, is_t = FALSE) {
 # Input  : return series, realized measure, rugarch specification, and Student-t indicator
 # Output : list containing the fitted model, estimation method, and stability diagnostics
 ###############################################################################################
-
 fit_robust <- function(r_data, realized_measure, spec_base, is_t = FALSE) {
 
-  ##### Attempt 1: hybrid solver (fastest approach) #####
+  ############################################################
+  ##### Attempt 1: hybrid solver
+  ############################################################
+
+  set.seed(123)
+
   fit1 <- tryCatch(
-    ugarchfit(data = r_data * 100,
-              spec = spec_base,
-              realizedVol = realized_measure * 100,
-              solver = "hybrid",
-              out.sample = lstep),
+    ugarchfit(
+      data = r_data * 100,
+      spec = spec_base,
+      realizedVol = realized_measure * 100,
+      solver = "hybrid",
+      out.sample = lstep,
+      solver.control = list(
+        rseed = 123
+      )
+    ),
     error = function(e) NA
   )
 
   if (!identical(fit1, NA) && all(!is.na(coef(fit1)))) {
+
     diag1 <- check_stability(fit1, is_t)
-    if (diag1$ok)
-      return(list(fit = fit1, method = "hybrid", diag = diag1))
+
+    if (diag1$ok) {
+      return(
+        list(
+          fit = fit1,
+          method = "hybrid",
+          diag = diag1
+        )
+      )
+    }
   }
 
-  ##### Attempt 2: gosolnp solver with multiple restarts #####
+
+  ############################################################
+  ##### Attempt 2: gosolnp solver with multiple restarts
+  ############################################################
+
+  set.seed(123)
+
   fit2 <- tryCatch(
-    ugarchfit(data = r_data * 100,
-              spec = spec_base,
-              realizedVol = realized_measure * 100,
-              solver = "gosolnp",
-              out.sample = lstep,
-              solver.control = list(n.restarts = GOSOLNP_RESTARTS,
-                                    n.sim = 500)),
+    ugarchfit(
+      data = r_data * 100,
+      spec = spec_base,
+      realizedVol = realized_measure * 100,
+      solver = "gosolnp",
+      out.sample = lstep,
+      solver.control = list(
+        n.restarts = GOSOLNP_RESTARTS,
+        n.sim = 500,
+        rseed = 123
+      )
+    ),
     error = function(e) NA
   )
 
   if (!identical(fit2, NA) && all(!is.na(coef(fit2)))) {
+
     diag2 <- check_stability(fit2, is_t)
-    if (diag2$ok)
-      return(list(fit = fit2, method = "gosolnp", diag = diag2))
+
+    if (diag2$ok) {
+      return(
+        list(
+          fit = fit2,
+          method = "gosolnp",
+          diag = diag2
+        )
+      )
+    }
   }
 
-  ##### Attempt 3: fix eta21 = 0 to reduce collinearity in the measurement equation #####
+
+  ############################################################
+  ##### Attempt 3: eta21 = 0 + hybrid solver
+  ############################################################
+
   spec_constrained <- spec_base
   setfixed(spec_constrained) <- list(eta21 = 0)
 
+  set.seed(123)
+
   fit3 <- tryCatch(
-    ugarchfit(data = r_data * 100,
-              spec = spec_constrained,
-              realizedVol = realized_measure * 100,
-              solver = "hybrid",
-              out.sample = lstep),
+    ugarchfit(
+      data = r_data * 100,
+      spec = spec_constrained,
+      realizedVol = realized_measure * 100,
+      solver = "hybrid",
+      out.sample = lstep,
+      solver.control = list(
+        rseed = 123
+      )
+    ),
     error = function(e) NA
   )
 
   if (!identical(fit3, NA) && all(!is.na(coef(fit3)))) {
+
     diag3 <- check_stability(fit3, is_t)
-    if (diag3$ok)
-      return(list(fit = fit3,
-                  method = "hybrid_eta21_fixed",
-                  diag = diag3))
+
+    if (diag3$ok) {
+      return(
+        list(
+          fit = fit3,
+          method = "hybrid_eta21_fixed",
+          diag = diag3
+        )
+      )
+    }
   }
 
-  ##### Attempt 4: fix eta21 = 0 and use the gosolnp solver (last resort) #####
+
+  ############################################################
+  ##### Attempt 4: eta21 = 0 + gosolnp solver
+  ############################################################
+
+  set.seed(123)
+
   fit4 <- tryCatch(
-    ugarchfit(data = r_data * 100,
-              spec = spec_constrained,
-              realizedVol = realized_measure * 100,
-              solver = "gosolnp",
-              out.sample = lstep,
-              solver.control = list(n.restarts = GOSOLNP_RESTARTS,
-                                    n.sim = 500)),
+    ugarchfit(
+      data = r_data * 100,
+      spec = spec_constrained,
+      realizedVol = realized_measure * 100,
+      solver = "gosolnp",
+      out.sample = lstep,
+      solver.control = list(
+        n.restarts = GOSOLNP_RESTARTS,
+        n.sim = 500,
+        rseed = 123
+      )
+    ),
     error = function(e) NA
   )
 
   if (!identical(fit4, NA) && all(!is.na(coef(fit4)))) {
+
     diag4 <- check_stability(fit4, is_t)
-    return(list(fit = fit4,
-                method = "gosolnp_eta21_fixed",
-                diag = diag4))
+
+    return(
+      list(
+        fit = fit4,
+        method = "gosolnp_eta21_fixed",
+        diag = diag4
+      )
+    )
   }
 
-  ##### If all attempts fail, return the first available fitted model #####
-  candidates <- list(fit1, fit2, fit3)
-  candidates <- candidates[!sapply(candidates, function(x) identical(x, NA))]
 
-  if (length(candidates) == 0)
-    stop("Model estimation failed: all fitting attempts returned NA.")
+  ############################################################
+  ##### If all attempts fail, return first available fit
+  ############################################################
+
+  candidates <- list(fit1, fit2, fit3)
+
+  candidates <- candidates[
+    !sapply(candidates, function(x) identical(x, NA))
+  ]
+
+  if (length(candidates) == 0) {
+    stop(
+      "Model estimation failed: all fitting attempts returned NA."
+    )
+  }
 
   fallback <- candidates[[1]]
 
-  warning("A numerically stable fit could not be obtained for this rolling window; using the first available fitted model.")
+  warning(
+    paste0(
+      "A numerically stable fit could not be obtained for this ",
+      "rolling window; using the first available fitted model."
+    )
+  )
 
-  list(fit = fallback,
-       method = "unresolved",
-       diag = check_stability(fallback, is_t))
+  list(
+    fit = fallback,
+    method = "unresolved",
+    diag = check_stability(fallback, is_t)
+  )
 }
-
-
+ 
 ################################## Training Data Check Function
 
 ###############################################################################################
