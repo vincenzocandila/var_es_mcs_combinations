@@ -176,6 +176,7 @@ cols_es<-matrix(rep(NA,3*N_model_full),ncol=3)
 r_t_oos<-coredata(r_t_oos_full)
 
 for (i in 1:N_model_full){
+set.seed(123)
 # Bayer & Dimitriadis (2020) test version 1
 cols_es[i,1]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 1)$pvalue_twosided_asymptotic))
 # Bayer & Dimitriadis (2020) test version 2
@@ -231,7 +232,7 @@ load("data/results/shanghai_comp_tau_0.025_final_results.RData")
 ##           							and 6 proposed combined predictors (MCS-Comb, WL-MCS-Comb, MCS-RS-Comb, WL-MCS-RS-Comb, 
 ##           							MCS-MS-Comb, WL-MCS-MS-Comb);
 ## tau							: coverage level;
-## Backtesting_in_sample_pvalues	: p-values of the six backtests (see Table 4 in the paper), by model (32) and over nstep;
+## Backtesting_pvalues			: p-values of the six backtests (see Table 4 in the paper), by model (32) and over nstep;
 ## db_loss_oos					: matrix of FZ losses for the out-of-sample period for the 42 models and combined predictors;
 ## VaR_oos_ev and ES_oos_ev		: matrices of VaR and ES for the out-of-sample period
 ##                           			for the 42 models and combined predictors;
@@ -243,7 +244,7 @@ load("data/results/shanghai_comp_tau_0.025_final_results.RData")
 
 
 #### Setting of the MCS
-
+set.seed(123)
 B <- 1000                  		# number of bootstrap replicates for the MCS
 alpha <- 0.25              		# significance level for the MCS
 N_model_full <- length(lab_full)   # total number of models and combined predictors
@@ -284,6 +285,7 @@ cols_es<-matrix(rep(NA,3*N_model_full),ncol=3)
 r_t_oos<-coredata(r_t_oos_full)
 
 for (i in 1:N_model_full){
+set.seed(123)
 # Bayer & Dimitriadis (2020) test version 1
 cols_es[i,1]<-as.numeric(suppressWarnings(esr_backtest(r_t_oos, VaR_oos_ev[,i], ES_oos_ev[,i],tau, version = 1)$pvalue_twosided_asymptotic))
 # Bayer & Dimitriadis (2020) test version 2
@@ -334,38 +336,325 @@ tab_dt_f(final_tab, title = "Table 6: Shanghai Composite out-of-sample evaluatio
 #
 #   - cellcolor{gray!25}: models passing all six backtests;
 #   - cellcolor{gray!50}: models belonging to the Superior Set of
-#                           Models (SSM) of the Model Confidence Set.
+#                         Models (SSM) of the Model Confidence Set.
 #
 # Table 7 is obtained by aggregating the information contained in
 # these evaluation tables across all nine indices and both coverage
 # levels.
 #
-# Alternatively, users can reproduce the evaluation tables from the
-# pre-computed result files provided. For each index and coverage level,
-# this can be done by running Script 4 (lines 13--31, line 42 after
-# changing the index name, and lines 114--198). Identical results can
-# also be obtained from the raw data by running Scripts 2 and 3.
-# 
-# The object final_tab_latex obtained at line 198 corresponds to the
-# evaluation table for a single index and should be stored as an
-# element of the list "list_of_tabs". After repeating this procedure
-# for all nine indices, "list_of_tabs" will contain the nine evaluation
-# tables required to reproduce Table 7. This has to be repeated for 
-# all the coverage levels.
-# 
-# Specifically, after line 198, initialize the list (only once) and store each
-# evaluation table as follows:
-# list_of_tabs <- list()
-# list_of_tabs[[index_name]] <- final_tab_latex
-# where "index_name" identifies the corresponding index.
-# After repeating this procedure for all nine indices,
-# "list_of_tabs" will contain nine elements, one for each index.
+# Alternatively, users can regenerate the two aggregated files from
+# the pre-computed index-specific result files by running the block below.
 ######################################################################
 
+################################################################################
+#### Generate the aggregated files used to reproduce Table 7
+################################################################################
+
+indices <- c(
+  "sp500",
+  "shanghai_comp",
+  "bovespa",
+  "bsesn",
+  "eurostoxx50",
+  "hsi",
+  "ixic",
+  "mxx",
+  "nikkei"
+)
+
+tau_values <- c(0.025, 0.01)
+
+B <- 1000
+alpha <- 0.25
+
+################################################################################
+#### Loop over coverage levels
+################################################################################
+
+for (tau in tau_values) {
+  
+  #### List containing one evaluation table for each index
+  list_of_tabs <- vector("list", length(indices))
+  names(list_of_tabs) <- indices
+  
+  ##############################################################################
+  #### Loop over indices
+  ##############################################################################
+  
+  for (jj in seq_along(indices)) {
+    
+    index_i <- indices[jj]
+    
+    message(
+      "Processing ",
+      index_i,
+      " - tau = ",
+      tau
+    )
+    
+    ##########################################################################
+    #### Load final VaR/ES forecasts and combination results
+    ##########################################################################
+    
+    file_i <- paste0(
+      "data/results/",
+      index_i,
+      "_tau_",
+      tau,
+      "_final_results.RData"
+    )
+    
+    load(file_i)
+    
+    ##########################################################################
+    #### Number of models
+    ##########################################################################
+    
+    N_model_full <- length(lab_full)
+    
+    ##########################################################################
+    #### Average FZLoss
+    ##########################################################################
+    
+    col_means <- colMeans(db_loss_oos)
+    
+    ##########################################################################
+    #### Model Confidence Set
+    ##########################################################################
+    
+    set.seed(123)
+    
+    MCS_est_with_c <- MCS_f(
+      db_loss_oos,
+      B = B,
+      alpha = alpha
+    )
+    
+    col_mcs <- cbind(
+      round(col_means, 3),
+      ifelse(
+        1:N_model_full %in% MCS_est_with_c$includedR,
+        1,
+        0
+      )
+    )
+    
+    colnames(col_mcs) <- c(
+      "FZLoss",
+      "SSM"
+    )
+    
+    ##########################################################################
+    #### VaR backtesting
+    ##########################################################################
+    
+    cols_var <- matrix(
+      NA,
+      nrow = N_model_full,
+      ncol = 3
+    )
+    
+    for (i in 1:N_model_full) {
+      
+      cols_var[i, 1] <- as.numeric(
+        BacktestVaR(
+          r_t_oos_full,
+          VaR_oos_ev[, i],
+          tau
+        )$LRuc[2]
+      )
+      
+      cols_var[i, 2] <- as.numeric(
+        BacktestVaR(
+          r_t_oos_full,
+          VaR_oos_ev[, i],
+          tau
+        )$LRcc[2]
+      )
+      
+      cols_var[i, 3] <- as.numeric(
+        BacktestVaR(
+          r_t_oos_full,
+          VaR_oos_ev[, i],
+          tau,
+          Lags = 5
+        )$DQ[2]
+      )
+    }
+    
+    cols_var <- round(
+      cols_var,
+      3
+    )
+    
+    colnames(cols_var) <- c(
+      "UC",
+      "CC",
+      "DQ"
+    )
+    
+    ##########################################################################
+    #### ES backtesting
+    ##########################################################################
+    
+    cols_es <- matrix(
+      NA,
+      nrow = N_model_full,
+      ncol = 3
+    )
+    
+    r_t_oos <- coredata(r_t_oos_full)
+    
+    for (i in 1:N_model_full) {
+      
+     set.seed(123)
+      
+      #### Bayer & Dimitriadis (2020) test: version 1
+      cols_es[i, 1] <- as.numeric(
+        suppressWarnings(
+          esr_backtest(
+            r_t_oos,
+            VaR_oos_ev[, i],
+            ES_oos_ev[, i],
+            tau,
+            version = 1
+          )$pvalue_twosided_asymptotic
+        )
+      )
+      
+      #### Bayer & Dimitriadis (2020) test: version 2
+      cols_es[i, 2] <- as.numeric(
+        suppressWarnings(
+          esr_backtest(
+            r_t_oos,
+            VaR_oos_ev[, i],
+            ES_oos_ev[, i],
+            tau,
+            version = 2
+          )$pvalue_twosided_asymptotic
+        )
+      )
+      
+      #### Bayer & Dimitriadis (2020) test: version 3
+      cols_es[i, 3] <- as.numeric(
+        suppressWarnings(
+          esr_backtest(
+            r_t_oos,
+            VaR_oos_ev[, i],
+            ES_oos_ev[, i],
+            tau,
+            version = 3
+          )$pvalue_twosided_asymptotic
+        )
+      )
+    }
+    
+    colnames(cols_es) <- c(
+      "BD-1",
+      "BD-2",
+      "BD-3"
+    )
+    
+    cols_es <- round(
+      cols_es,
+      3
+    )
+    
+    ##########################################################################
+    #### Final evaluation table
+    ##########################################################################
+    
+    final_tab <- cbind(
+      cols_var,
+      cols_es,
+      col_mcs
+    )
+    
+    rownames(final_tab) <- lab_full
+    
+    #### 1 if all backtests are passed (p-values >= 0.05), 0 otherwise
+    Backtest_all <- as.integer(
+      rowSums(final_tab[, 1:6] >= 0.05) == 6
+    )
+    
+    final_tab <- cbind(
+      final_tab,
+      Backtest = Backtest_all
+    )
+    
+    ##########################################################################
+    #### Add LaTeX markers
+    ##########################################################################
+    
+    final_tab_latex <- add_latex_markers(
+      final_tab
+    )
+    
+    ##########################################################################
+    #### Store table for the current index
+    ##########################################################################
+    
+    list_of_tabs[[jj]] <- final_tab_latex
+    
+    message(
+      "Completed ",
+      index_i,
+      " - tau = ",
+      tau
+    )
+  }
+  
+  ############################################################################
+  #### Save aggregated results
+  ############################################################################
+  
+  #######################################################################################
+  #### all_indices_tau_0.025 / all_indices_tau_0.01 includes:
+  ## list_of_tabs : list of tables (one per index) with models in rows and
+  ##                backtesting p-values (UC, CC, DQ, BD-1, BD-2, BD-3) and
+  ##                FZLoss in columns;
+  ##                LaTeX markers (e.g., cellcolor{...}) indicate whether models
+  ##                pass all backtests at the 5% level and belong to the SSM of
+  ##                the MCS at the 25% significance level;
+  ## lab_full     : model labels, including 32 models, 4 benchmarks
+  ##                (EW-Comb, Median-Comb, RS-Comb, MS-Comb), and 6 proposed
+  ##                combined predictors (MCS-Comb, WL-MCS-Comb, MCS-RS-Comb,
+  ##                WL-MCS-RS-Comb, MCS-MS-Comb, WL-MCS-MS-Comb).
+  ## tau          : coverage level.
+  #######################################################################################
+  
+  output_file <- paste0(
+    "data/results/all_indices_gen_tau_",
+    tau,
+    ".RData"
+  )
+  
+  save(
+    list_of_tabs,
+    lab_full,
+    tau,
+    file = output_file
+  )
+  
+  message(
+    "Saved: ",
+    output_file
+  )
+}
+
+
+################################################################################
+#### Load aggregated results for tau = 0.025
+################################################################################
+
+# Option 1: use the pre-aggregated file included in the replication package
 load("data/results/all_indices_tau_0.025.RData")
 
+# Option 2: use the file regenerated by the code above
+# load("data/results/all_indices_gen_tau_0.025.RData")
+
 #######################################################################################
-#### all_indices_tau_0.025 includes:
+#### all_indices_tau_0.025 / all_indices_gen_tau_0.025 includes:
 ## list_of_tabs	: list of tables (one per index) with models in rows and
 ##               		backtesting p-values (UC, CC, DQ, BD-1, BD-2, BD-3) and FZLoss in columns;
 ##               		LaTeX markers (e.g., cellcolor{...}) indicate whether models pass all backtests at the 5% level
@@ -384,10 +673,19 @@ res_final_0.025 <- build_summary_from_list(
 
 rm(list_of_tabs)
 
+
+################################################################################
+#### Load aggregated results for tau = 0.01
+################################################################################
+
+# Option 1: use the pre-aggregated file included in the replication package
 load("data/results/all_indices_tau_0.01.RData")
 
+# Option 2: use the file regenerated by the code above
+# load("data/results/all_indices_gen_tau_0.01.RData")
+
 #######################################################################################
-#### all_indices_tau_0.01 includes:
+#### all_indices_tau_0.01 / all_indices_gen_tau_0.01 includes:
 ## list_of_tabs	: list of tables (one per index) with models in rows and
 ##               		backtesting p-values (UC, CC, DQ, BD-1, BD-2, BD-3) and FZLoss in columns;
 ##               		LaTeX markers (e.g., cellcolor{...}) indicate whether models pass all backtests at the 5% level
@@ -411,5 +709,6 @@ tab_7
 tab_7_dt_f(tab_7,
 title= "Table 7: Summary of successful backtests and MCS inclusions across indices and coverage
 levels")
+
 
 

@@ -13,7 +13,7 @@ library(xts)				# Version used: 0.14.1
 library(zoo)				# Version used: 1.8.13
 library(fGarch)				# Version used: 4033.92
 library(rumidas)			# Version used: 0.1.3
-library(rugarch)			# Version used: 1.5.3
+library(rugarch)			# Version used: 1.5.4
 library(quantreg)			# Version used: 6.1
 
 ###################################
@@ -75,7 +75,7 @@ MV[1]<-0
 ################################################## VaR, ES, and MIDAS settings
 ##################################################
 
-tau	<-	0.025	# Coverage level
+tau	<-	0.025 	# Coverage level
 
 K	<-	36 		# Number of lagged realizations entering the long-run equation
 
@@ -795,11 +795,8 @@ if (tt == 1) {
 
 m<-12
 
-
 rg_est_rvol_5_t<-fit_robust(r_t_est_cycle, rvol_5_est_cycle, 
 spec_re_garch_t, is_t = TRUE)$fit
-
-
 
 sigma_rg_t_rvol_5_in_s <- rg_est_rvol_5_t@fit$sigma / 100
 sigma_rg_t_rvol_5_oos  <- as.numeric(sigma(ugarchforecast(rg_est_rvol_5_t, n.ahead = 1))) / 100
@@ -1945,8 +1942,8 @@ if (
   ##########################################
 
   fallback_ig_oos <- c(
-    as.numeric(VaR_oos[tt, "SAV"]),
-    as.numeric(VaR_oos[tt, "AS"])
+    as.numeric(VaR_oos[tt, "CAViaR-SAV"]),
+    as.numeric(VaR_oos[tt, "CAViaR-AS"])
   )
 
   fallback_ig_oos <- fallback_ig_oos[
@@ -2797,6 +2794,8 @@ lag_current <- q_hat_vec[tt]
 # Estimate the MF-QR-X model
 ############################################
 
+set.seed(123)
+
 fit_mfx_es_rvol_5 <- tryCatch(
   uqfit(
     model = "lARCHMIDASX",
@@ -3017,6 +3016,8 @@ m<-31
 # Estimate the MF-QR-X model
 ############################################
 
+set.seed(123)
+
 fit_mfx_es_rb_ss <- tryCatch(
   uqfit(
     model = "lARCHMIDASX",
@@ -3234,6 +3235,8 @@ m<-32
 # Estimate the MF-QR-X model
 ############################################
 
+set.seed(123)
+
 fit_mfx_es_rk <- tryCatch(
   uqfit(
     model = "lARCHMIDASX",
@@ -3450,33 +3453,83 @@ message("Completed all models (32/32) for tt: ", tt, " out of ", nstep)
 ############################################
 ############################################
 
+# Each intermediate checkpoint is saved using a unique filename.
+# Once the new checkpoint has been successfully saved, the previous
+# checkpoint is removed. This avoids overwriting files that may be
+# temporarily locked by backup or endpoint-security software while
+# preventing the accumulation of large checkpoint files.
 
-## 
-#if (tt %% 10 == 0) message("tt: ", tt, " out of ", nstep)
+if (tt %% 50 == 0 & tt < nstep) {
 
+  checkpoint_file <- paste0(
+    tools::file_path_sans_ext(filename),
+    "_ckpt_tt",
+    sprintf("%04d", tt),
+    ".RData"
+  )
 
-if (tt %% 50 == 0| tt == nstep){
-save(
-tt,
-Tin,
-tau,
-list_of_models,
-N_model,
-nstep,
-VaR_oos,
-ES_oos,
-r_t_oos_full,
-r_t_in_s_matrix,
-VaR_training_data_mod,
-ES_training_data_mod,
-file=filename)
+  # Save the new checkpoint first
+  save(
+    tt,
+    Tin,
+    tau,
+    list_of_models,
+    N_model,
+    nstep,
+    VaR_oos,
+    ES_oos,
+    r_t_oos_full,
+    r_t_in_s_matrix,
+    VaR_training_data_mod,
+    ES_training_data_mod,
+    file = checkpoint_file
+  )
 
+  message("Checkpoint saved: ", checkpoint_file)
 
+  # Remove the previous checkpoint only after the new one
+  # has been successfully saved
+  previous_tt <- tt - 50
+
+  if (previous_tt > 0) {
+
+    previous_checkpoint <- paste0(
+      tools::file_path_sans_ext(filename),
+      "_ckpt_tt",
+      sprintf("%04d", previous_tt),
+      ".RData"
+    )
+
+    if (file.exists(previous_checkpoint)) {
+      file.remove(previous_checkpoint)
+      message("Previous checkpoint removed: ", previous_checkpoint)
+    }
+  }
 }
 
-} # 
+if (tt == nstep) {
+
+  save(
+    tt,
+    Tin,
+    tau,
+    list_of_models,
+    N_model,
+    nstep,
+    VaR_oos,
+    ES_oos,
+    r_t_oos_full,
+    r_t_in_s_matrix,
+    VaR_training_data_mod,
+    ES_training_data_mod,
+    file = filename
+  )
+
+  message("Final results saved: ", filename)
+}
 
 
+} # end for(tt in 1:nstep)
 
 ############################################
 ############################################

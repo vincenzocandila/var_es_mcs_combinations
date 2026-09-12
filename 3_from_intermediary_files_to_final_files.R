@@ -172,6 +172,8 @@ for (i in seq_len(N_model)) {
     e <- ES_s[, i]
 
     bt1 <- BacktestVaR(r_s, v, tau)
+
+    set.seed(123)
     
     Backtesting_pvalues[i, , tt] <- round(c(
       as.numeric(bt1$LRuc[2]),
